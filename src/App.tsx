@@ -13,14 +13,10 @@ import WhatsAppManager from './components/WhatsApp/WhatsAppManager';
 import { mockNotifications, markNotificationAsRead, addNotification } from './data/mockData';
 import type { Notification } from './types/database';
 import { useActiveLive } from './hooks/useActiveLive';
-import { seedDatabase } from './utils/seedData';
 
 function App() {
   const [activeModule, setActiveModule] = useState('pedidos');
 
-  useEffect(() => {
-    seedDatabase();
-  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const { activeLive, shouldShowBanner, dismissBanner } = useActiveLive();
