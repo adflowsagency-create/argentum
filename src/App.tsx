@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
+import LiveAnnouncementBanner from './components/Layout/LiveAnnouncementBanner';
 import PedidosPipeline from './components/Pedidos/PedidosPipeline';
 import InventarioTable from './components/Inventario/InventarioTable';
 import Dashboard from './components/Analytics/Dashboard';
@@ -11,11 +12,13 @@ import ConfiguracionManager from './components/Configuracion/ConfiguracionManage
 import WhatsAppManager from './components/WhatsApp/WhatsAppManager';
 import { mockNotifications, markNotificationAsRead, addNotification } from './data/mockData';
 import type { Notification } from './types/database';
+import { useActiveLive } from './hooks/useActiveLive';
 
 function App() {
   const [activeModule, setActiveModule] = useState('pedidos');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { activeLive, shouldShowBanner, dismissBanner } = useActiveLive();
 
   const handleMarkNotificationRead = (id: string) => {
     markNotificationAsRead(id);
@@ -25,6 +28,10 @@ function App() {
   const handleAddNotification = (notification: Omit<Notification, 'id' | 'created_at'>) => {
     addNotification(notification);
     setNotifications([...mockNotifications]);
+  };
+
+  const handleJoinLive = () => {
+    setActiveModule('lives');
   };
 
   const renderModule = () => {
@@ -52,6 +59,19 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Live Announcement Banner */}
+      {shouldShowBanner && activeLive && (
+        <LiveAnnouncementBanner
+          liveId={activeLive.live_id}
+          titulo={activeLive.titulo || `Live #${activeLive.live_id}`}
+          notas={activeLive.notas}
+          ventas_total={activeLive.ventas_total}
+          pedidos_count={activeLive.pedidos_count}
+          onJoinLive={handleJoinLive}
+          onDismiss={() => dismissBanner(activeLive.live_id)}
+        />
+      )}
+
       {/* Sidebar */}
       <Sidebar
         activeModule={activeModule}
@@ -62,13 +82,13 @@ function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
+        <Header
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           activeModule={activeModule}
           notifications={notifications}
           onMarkNotificationRead={handleMarkNotificationRead}
         />
-        
+
         <main className="flex-1 overflow-y-auto bg-gray-50">
           {renderModule()}
         </main>
