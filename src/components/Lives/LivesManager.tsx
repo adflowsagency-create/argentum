@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3 } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 import type { Live } from '../../types/database';
-import { mockLives, updateLiveStatus } from '../../data/mockData';
 import LiveDetailsModal from './LiveDetailsModal';
 import EditLiveModal from './EditLiveModal';
 import ActiveLiveModal from './ActiveLiveModal';
@@ -16,48 +16,31 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [showLiveDetails, setShowLiveDetails] = useState(false);
   const [showEditLive, setShowEditLive] = useState(false);
   const [showActiveLive, setShowActiveLive] = useState(false);
-  const [lives, setLives] = useState(mockLives);
+  const [lives, setLives] = useState<Live[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Check for active lives and update status
-  React.useEffect(() => {
-    const checkLiveStatus = () => {
-      const now = new Date();
-      let hasUpdates = false;
+  const loadLives = async () => {
+    const { data, error } = await supabase
+      .from('lives')
+      .select('*')
+      .order('fecha_hora', { ascending: false });
 
-      mockLives.forEach(live => {
-        const liveTime = new Date(live.fecha_hora);
-        const timeDiff = now.getTime() - liveTime.getTime();
-        
-        // If live should be active (started within last 3 hours)
-        if (timeDiff >= 0 && timeDiff <= 3 * 60 * 60 * 1000 && live.estado === 'programado') {
-          updateLiveStatus(live.live_id, 'activo');
-          hasUpdates = true;
-          
-          onAddNotification({
-            title: 'Live Iniciado',
-            message: `El live "${live.titulo || `Live #${live.live_id}`}" ha comenzado`,
-            type: 'info',
-            read: false
-          });
-        }
-        
-        // If live should be finished (started more than 3 hours ago)
-        if (timeDiff > 3 * 60 * 60 * 1000 && live.estado === 'activo') {
-          updateLiveStatus(live.live_id, 'finalizado');
-          hasUpdates = true;
-        }
-      });
+    if (error) {
+      console.error('Error loading lives:', error);
+      return;
+    }
 
-      if (hasUpdates) {
-        setLives([...mockLives]);
-      }
-    };
+    if (data) {
+      setLives(data);
+    }
+    setIsLoading(false);
+  };
 
-    checkLiveStatus();
-    const interval = setInterval(checkLiveStatus, 60000); // Check every minute
-
+  useEffect(() => {
+    loadLives();
+    const interval = setInterval(loadLives, 30000);
     return () => clearInterval(interval);
-  }, [onAddNotification]);
+  }, []);
 
   const formatCurrency = (amount: number) => `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
   
@@ -417,9 +400,11 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       {/* Active Live Modal */}
       <ActiveLiveModal
         isOpen={showActiveLive}
-        onClose={() => setShowActiveLive(false)}
+        onClose={() => {
+          setShowActiveLive(false);
+          loadLives();
+        }}
         liveId={selectedLive}
-        lives={lives}
         onAddNotification={onAddNotification}
       />
     </div>

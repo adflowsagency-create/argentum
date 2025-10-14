@@ -1,325 +1,592 @@
-import React, { useState } from 'react';
-import { X, ShoppingCart, Plus, Minus, Search, User, Phone, Package, DollarSign } from 'lucide-react';
-import type { Live, Cliente, Product } from '../../types/database';
-import { mockClientes, mockProducts } from '../../data/mockData';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Search, Plus, Power } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+import type { Live, BasketWithDetails, Product, Cliente, LiveStats } from '../../types/database';
+import LiveStatsPanel from './LiveStatsPanel';
+import BasketCard from './BasketCard';
+import BasketDrawer from './BasketDrawer';
+import ProductSidebar from './ProductSidebar';
+import FinalizeLiveModal from './FinalizeLiveModal';
 
 interface ActiveLiveModalProps {
   isOpen: boolean;
   onClose: () => void;
   liveId: string | null;
-  lives: (Live & { ventas_total: number; pedidos_count: number; estado: 'programado' | 'activo' | 'finalizado' })[];
   onAddNotification: (notification: any) => void;
 }
 
-interface CartItem {
-  product: Product;
-  cantidad: number;
-}
+export default function ActiveLiveModal({
+  isOpen,
+  onClose,
+  liveId,
+  onAddNotification,
+}: ActiveLiveModalProps) {
+  const [live, setLive] = useState<Live | null>(null);
+  const [baskets, setBaskets] = useState<BasketWithDetails[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [stats, setStats] = useState<LiveStats>({
+    facturacion_total: 0,
+    canastas_activas: 0,
+    productos_vendidos: 0,
+  });
 
-export default function ActiveLiveModal({ isOpen, onClose, liveId, lives, onAddNotification }: ActiveLiveModalProps) {
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [clienteSearch, setClienteSearch] = useState('');
-  const [productSearch, setProductSearch] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedBasketId, setSelectedBasketId] = useState<string | null>(null);
+  const [showBasketDrawer, setShowBasketDrawer] = useState(false);
+  const [highlightedBasketId, setHighlightedBasketId] = useState<string | null>(null);
+
   const [showClienteSelector, setShowClienteSelector] = useState(false);
+  const [clienteSearch, setClienteSearch] = useState('');
 
-  const live = lives.find(l => l.live_id === liveId);
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+  const [isProcessingFinalization, setIsProcessingFinalization] = useState(false);
 
-  const filteredClientes = mockClientes.filter(cliente =>
-    cliente.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-    cliente.telefono_whatsapp.includes(clienteSearch)
-  );
+  const [basketSearch, setBasketSearch] = useState('');
 
-  const filteredProducts = mockProducts.filter(product =>
-    product.activo &&
-    product.cantidad_en_stock > 0 &&
-    (product.nombre.toLowerCase().includes(productSearch.toLowerCase()) ||
-     product.categoria.toLowerCase().includes(productSearch.toLowerCase()))
-  );
+  const loadLiveData = useCallback(async () => {
+    if (!liveId) return;
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find(item => item.product.product_id === product.product_id);
-    
-    if (existingItem) {
-      if (existingItem.cantidad >= product.cantidad_en_stock) {
-        alert(`Stock máximo: ${product.cantidad_en_stock}`);
-        return;
+    const { data: liveData } = await supabase
+      .from('lives')
+      .select('*')
+      .eq('live_id', liveId)
+      .maybeSingle();
+
+    if (liveData) {
+      setLive(liveData);
+    }
+
+    const { data: basketsData } = await supabase
+      .from('baskets')
+      .select('*')
+      .eq('live_id', liveId)
+      .eq('estado', 'abierta');
+
+    if (basketsData) {
+      const basketsWithDetails: BasketWithDetails[] = [];
+
+      for (const basket of basketsData) {
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('*')
+          .eq('cliente_id', basket.cliente_id)
+          .maybeSingle();
+
+        const { data: items } = await supabase
+          .from('basket_items')
+          .select('*')
+          .eq('basket_id', basket.basket_id);
+
+        const itemsWithProducts = [];
+        if (items) {
+          for (const item of items) {
+            const { data: product } = await supabase
+              .from('products')
+              .select('*')
+              .eq('product_id', item.product_id)
+              .maybeSingle();
+
+            if (product) {
+              itemsWithProducts.push({ ...item, product });
+            }
+          }
+        }
+
+        if (cliente) {
+          basketsWithDetails.push({
+            ...basket,
+            cliente,
+            items: itemsWithProducts,
+          });
+        }
       }
-      setCart(cart.map(item =>
-        item.product.product_id === product.product_id
-          ? { ...item, cantidad: item.cantidad + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { product, cantidad: 1 }]);
+
+      setBaskets(basketsWithDetails);
+
+      const totalRevenue = basketsWithDetails.reduce((sum, b) => sum + b.total, 0);
+      const totalProducts = basketsWithDetails.reduce(
+        (sum, b) => sum + b.items.reduce((itemSum, item) => itemSum + item.cantidad, 0),
+        0
+      );
+
+      setStats({
+        facturacion_total: totalRevenue,
+        canastas_activas: basketsWithDetails.length,
+        productos_vendidos: totalProducts,
+      });
+    }
+
+    const { data: productsData } = await supabase.from('products').select('*').eq('activo', true);
+    if (productsData) {
+      setProducts(productsData);
+    }
+
+    const { data: clientesData } = await supabase.from('clientes').select('*');
+    if (clientesData) {
+      setClientes(clientesData);
+    }
+  }, [liveId]);
+
+  useEffect(() => {
+    if (isOpen && liveId) {
+      loadLiveData();
+      const interval = setInterval(loadLiveData, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, liveId, loadLiveData]);
+
+  const handleOpenBasket = async (clienteId: string) => {
+    if (!liveId) return;
+
+    const existingBasket = baskets.find((b) => b.cliente_id === clienteId);
+
+    if (existingBasket) {
+      setHighlightedBasketId(existingBasket.basket_id);
+      setTimeout(() => {
+        setHighlightedBasketId(null);
+        setSelectedBasketId(existingBasket.basket_id);
+        setShowBasketDrawer(true);
+      }, 800);
+      return;
+    }
+
+    const { data: newBasket, error } = await supabase
+      .from('baskets')
+      .insert({
+        live_id: liveId,
+        cliente_id: clienteId,
+        estado: 'abierta',
+        subtotal: 0,
+        total: 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating basket:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo crear la canasta',
+        type: 'error',
+        read: false,
+      });
+      return;
+    }
+
+    if (newBasket) {
+      onAddNotification({
+        title: 'Canasta Creada',
+        message: 'Nueva canasta abierta exitosamente',
+        type: 'success',
+        read: false,
+      });
+      await loadLiveData();
+      setShowClienteSelector(false);
+      setClienteSearch('');
     }
   };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity === 0) {
-      setCart(cart.filter(item => item.product.product_id !== productId));
+  const handleAddProduct = async (basketId: string, productId: string) => {
+    const product = products.find((p) => p.product_id === productId);
+    if (!product || product.cantidad_en_stock < 1) {
+      onAddNotification({
+        title: 'Stock Insuficiente',
+        message: 'No hay stock disponible para este producto',
+        type: 'warning',
+        read: false,
+      });
       return;
     }
 
-    const product = mockProducts.find(p => p.product_id === productId);
-    if (product && newQuantity > product.cantidad_en_stock) {
-      alert(`Stock máximo: ${product.cantidad_en_stock}`);
+    const basket = baskets.find((b) => b.basket_id === basketId);
+    const existingItem = basket?.items.find((item) => item.product_id === productId);
+
+    if (existingItem) {
+      await handleUpdateQuantity(existingItem.basket_item_id, existingItem.cantidad + 1);
       return;
     }
 
-    setCart(cart.map(item =>
-      item.product.product_id === productId
-        ? { ...item, cantidad: newQuantity }
-        : item
-    ));
-  };
-
-  const createOrder = () => {
-    if (!selectedCliente) {
-      alert('Selecciona un cliente');
-      return;
-    }
-
-    if (cart.length === 0) {
-      alert('Agrega productos al carrito');
-      return;
-    }
-
-    const subtotal = cart.reduce((sum, item) => sum + (item.product.precio_unitario * item.cantidad), 0);
-    const total = subtotal;
-
-    // Simulate order creation
-    const orderId = `live_${Date.now()}`;
-    
-    onAddNotification({
-      title: 'Pedido Creado en Live',
-      message: `Pedido #${orderId} de ${selectedCliente.nombre} por $${total.toFixed(2)}`,
-      type: 'success',
-      read: false
+    const { error: itemError } = await supabase.from('basket_items').insert({
+      basket_id: basketId,
+      product_id: productId,
+      cantidad: 1,
+      precio_unitario_snapshot: product.precio_unitario,
+      costo_unitario_snapshot: product.costo_unitario,
+      total_item: product.precio_unitario,
     });
 
-    // Reset cart and client
-    setCart([]);
-    setSelectedCliente(null);
-    setClienteSearch('');
-    setShowClienteSelector(false);
+    if (itemError) {
+      console.error('Error adding product:', itemError);
+      return;
+    }
 
-    alert(`¡Pedido creado exitosamente!\nCliente: ${selectedCliente.nombre}\nTotal: $${total.toFixed(2)}`);
+    await updateBasketTotals(basketId);
+    await loadLiveData();
+
+    onAddNotification({
+      title: 'Producto Agregado',
+      message: `${product.nombre} agregado a la canasta`,
+      type: 'success',
+      read: false,
+    });
   };
 
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+  const handleUpdateQuantity = async (basketItemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      await handleRemoveItem(basketItemId);
+      return;
+    }
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.product.precio_unitario * item.cantidad), 0);
+    const basket = baskets.find((b) =>
+      b.items.some((item) => item.basket_item_id === basketItemId)
+    );
+    const item = basket?.items.find((item) => item.basket_item_id === basketItemId);
+
+    if (!item) return;
+
+    const product = products.find((p) => p.product_id === item.product_id);
+    if (!product || newQuantity > product.cantidad_en_stock) {
+      onAddNotification({
+        title: 'Stock Insuficiente',
+        message: `Solo hay ${product?.cantidad_en_stock || 0} unidades disponibles`,
+        type: 'warning',
+        read: false,
+      });
+      return;
+    }
+
+    const newTotal = item.precio_unitario_snapshot * newQuantity;
+
+    await supabase
+      .from('basket_items')
+      .update({
+        cantidad: newQuantity,
+        total_item: newTotal,
+      })
+      .eq('basket_item_id', basketItemId);
+
+    if (basket) {
+      await updateBasketTotals(basket.basket_id);
+    }
+
+    await loadLiveData();
+  };
+
+  const handleRemoveItem = async (basketItemId: string) => {
+    const basket = baskets.find((b) =>
+      b.items.some((item) => item.basket_item_id === basketItemId)
+    );
+
+    await supabase.from('basket_items').delete().eq('basket_item_id', basketItemId);
+
+    if (basket) {
+      await updateBasketTotals(basket.basket_id);
+    }
+
+    await loadLiveData();
+
+    onAddNotification({
+      title: 'Producto Eliminado',
+      message: 'Producto removido de la canasta',
+      type: 'info',
+      read: false,
+    });
+  };
+
+  const updateBasketTotals = async (basketId: string) => {
+    const { data: items } = await supabase
+      .from('basket_items')
+      .select('total_item')
+      .eq('basket_id', basketId);
+
+    const total = items?.reduce((sum, item) => sum + item.total_item, 0) || 0;
+
+    await supabase
+      .from('baskets')
+      .update({
+        subtotal: total,
+        total: total,
+      })
+      .eq('basket_id', basketId);
+  };
+
+  const handleAddNewProduct = async (productData: {
+    nombre: string;
+    precio_unitario: number;
+    cantidad_en_stock: number;
+  }) => {
+    const { error } = await supabase.from('products').insert({
+      nombre: productData.nombre,
+      categoria: 'General',
+      precio_unitario: productData.precio_unitario,
+      costo_unitario: productData.precio_unitario * 0.5,
+      cantidad_en_stock: productData.cantidad_en_stock,
+      activo: true,
+    });
+
+    if (error) {
+      console.error('Error adding product:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo agregar el producto',
+        type: 'error',
+        read: false,
+      });
+      return;
+    }
+
+    await loadLiveData();
+
+    onAddNotification({
+      title: 'Producto Agregado',
+      message: `${productData.nombre} agregado al inventario`,
+      type: 'success',
+      read: false,
+    });
+  };
+
+  const handleFinalizeLive = async () => {
+    if (!liveId) return;
+
+    setIsProcessingFinalization(true);
+
+    try {
+      for (const basket of baskets) {
+        const { data: pedido, error: pedidoError } = await supabase
+          .from('pedidos')
+          .insert({
+            cliente_id: basket.cliente_id,
+            live_id: liveId,
+            estado: 'Pendiente',
+            subtotal: basket.subtotal,
+            impuestos: 0,
+            total: basket.total,
+            empleado: 'Sistema',
+            notas: `Pedido generado desde Live: ${live?.titulo || liveId}`,
+          })
+          .select()
+          .single();
+
+        if (pedidoError || !pedido) {
+          throw new Error(`Error creando pedido para cliente ${basket.cliente_id}`);
+        }
+
+        for (const item of basket.items) {
+          await supabase.from('pedido_items').insert({
+            pedido_id: pedido.pedido_id,
+            product_id: item.product_id,
+            cantidad: item.cantidad,
+            precio_unitario_snapshot: item.precio_unitario_snapshot,
+            costo_unitario_snapshot: item.costo_unitario_snapshot,
+            total_item: item.total_item,
+          });
+
+          await supabase.rpc('update_product_stock', {
+            p_product_id: item.product_id,
+            p_quantity: -item.cantidad,
+          });
+        }
+
+        await supabase
+          .from('baskets')
+          .update({ estado: 'finalizada' })
+          .eq('basket_id', basket.basket_id);
+      }
+
+      await supabase.from('lives').update({ estado: 'finalizado' }).eq('live_id', liveId);
+
+      onAddNotification({
+        title: 'Live Finalizado',
+        message: `${baskets.length} pedidos creados exitosamente`,
+        type: 'success',
+        read: false,
+      });
+
+      setShowFinalizeModal(false);
+      onClose();
+    } catch (error) {
+      console.error('Error finalizing live:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo finalizar el Live. Intenta nuevamente.',
+        type: 'error',
+        read: false,
+      });
+    } finally {
+      setIsProcessingFinalization(false);
+    }
+  };
+
+  const filteredClientes = clientes.filter(
+    (cliente) =>
+      cliente.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+      cliente.telefono_whatsapp.includes(clienteSearch)
+  );
+
+  const filteredBaskets = baskets.filter((basket) =>
+    basket.cliente.nombre.toLowerCase().includes(basketSearch.toLowerCase())
+  );
+
+  const selectedBasket = baskets.find((b) => b.basket_id === selectedBasketId);
 
   if (!isOpen || !live) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
-          <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                🔴 EN VIVO: {live.titulo || `Live #${live.live_id}`}
-              </h2>
-              <p className="text-sm text-gray-600">Creando pedidos en tiempo real</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex h-[70vh]">
-          {/* Left Panel - Products */}
-          <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Productos Disponibles</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
+        <div className="bg-white w-full h-full flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  EN VIVO: {live.titulo || `Live #${live.live_id}`}
+                </h2>
+                <p className="text-sm text-gray-600">Gestión de ventas en tiempo real</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredProducts.map((product) => (
-                <div key={product.product_id} className="border border-gray-200 rounded-lg p-4 hover:border-green-300 transition-colors">
-                  <div className="flex items-start space-x-3">
-                    <img
-                      src={product.imagen_url}
-                      alt={product.nombre}
-                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 truncate">{product.nombre}</h4>
-                      <p className="text-sm text-gray-500">{product.categoria}</p>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(product.precio_unitario)}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-gray-500">Stock: {product.cantidad_en_stock}</span>
-                        <button
-                          onClick={() => addToCart(product)}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
-                        >
-                          Agregar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowFinalizeModal(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+              >
+                <Power className="h-4 w-4" />
+                <span>Finalizar Live</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
           </div>
 
-          {/* Right Panel - Cart & Client */}
-          <div className="w-96 p-6 bg-gray-50 overflow-y-auto">
-            {/* Client Selection */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Cliente</h3>
-              {!selectedCliente ? (
-                <div>
-                  {!showClienteSelector ? (
-                    <button
-                      onClick={() => setShowClienteSelector(true)}
-                      className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 transition-colors"
-                    >
-                      <User className="h-5 w-5 mx-auto mb-1" />
-                      Seleccionar Cliente
-                    </button>
-                  ) : (
-                    <div>
-                      <div className="relative mb-2">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <input
-                          type="text"
-                          placeholder="Buscar cliente..."
-                          value={clienteSearch}
-                          onChange={(e) => setClienteSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div className="max-h-32 overflow-y-auto space-y-1">
-                        {filteredClientes.slice(0, 5).map((cliente) => (
-                          <button
-                            key={cliente.cliente_id}
-                            onClick={() => {
-                              setSelectedCliente(cliente);
-                              setShowClienteSelector(false);
-                              setClienteSearch('');
-                            }}
-                            className="w-full p-2 text-left hover:bg-gray-100 rounded text-sm"
-                          >
-                            <div className="font-medium">{cliente.nombre}</div>
-                            <div className="text-gray-500">{cliente.telefono_whatsapp}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+              <LiveStatsPanel stats={stats} />
+
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Canastas Activas ({baskets.length})
+                </h3>
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Buscar canasta..."
+                      value={basketSearch}
+                      onChange={(e) => setBasketSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setShowClienteSelector(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Abrir Canasta</span>
+                  </button>
                 </div>
-              ) : (
-                <div className="bg-white p-3 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{selectedCliente.nombre}</p>
-                      <p className="text-sm text-gray-500 flex items-center">
-                        <Phone className="h-3 w-3 mr-1" />
-                        {selectedCliente.telefono_whatsapp}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedCliente(null);
-                        setShowClienteSelector(false);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+              </div>
+
+              {filteredBaskets.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <Plus className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium">No hay canastas activas</p>
+                    <p className="text-sm mt-2">
+                      Abre una canasta para comenzar a agregar productos
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Cart */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">
-                Carrito ({cart.length})
-              </h3>
-              
-              {cart.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ShoppingCart className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm">Carrito vacío</p>
-                </div>
               ) : (
-                <div className="space-y-3">
-                  {cart.map((item) => (
-                    <div key={item.product.product_id} className="bg-white p-3 rounded-lg border">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={item.product.imagen_url}
-                          alt={item.product.nombre}
-                          className="w-10 h-10 rounded object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{item.product.nombre}</p>
-                          <p className="text-sm text-gray-500">{formatCurrency(item.product.precio_unitario)}</p>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => updateQuantity(item.product.product_id, item.cantidad - 1)}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="w-8 text-center text-sm font-medium">{item.cantidad}</span>
-                          <button
-                            onClick={() => updateQuantity(item.product.product_id, item.cantidad + 1)}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredBaskets.map((basket) => (
+                    <BasketCard
+                      key={basket.basket_id}
+                      basket={basket}
+                      onOpenBasket={(basketId) => {
+                        setSelectedBasketId(basketId);
+                        setShowBasketDrawer(true);
+                      }}
+                      isHighlighted={basket.basket_id === highlightedBasketId}
+                    />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Total & Checkout */}
-            {cart.length > 0 && (
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-lg font-semibold text-gray-900">Total:</span>
-                  <span className="text-xl font-bold text-green-600">{formatCurrency(cartTotal)}</span>
-                </div>
-                
-                <button
-                  onClick={createOrder}
-                  disabled={!selectedCliente || cart.length === 0}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Crear Pedido
-                </button>
-              </div>
-            )}
+            <ProductSidebar products={products} onAddNewProduct={handleAddNewProduct} />
           </div>
         </div>
       </div>
-    </div>
+
+      {showClienteSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar Cliente</h3>
+
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Buscar cliente..."
+                value={clienteSearch}
+                onChange={(e) => setClienteSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {filteredClientes.slice(0, 10).map((cliente) => (
+                <button
+                  key={cliente.cliente_id}
+                  onClick={() => handleOpenBasket(cliente.cliente_id)}
+                  className="w-full p-3 text-left hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+                >
+                  <div className="font-medium text-gray-900">{cliente.nombre}</div>
+                  <div className="text-sm text-gray-500">{cliente.telefono_whatsapp}</div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowClienteSelector(false);
+                setClienteSearch('');
+              }}
+              className="w-full mt-4 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <BasketDrawer
+        isOpen={showBasketDrawer}
+        onClose={() => {
+          setShowBasketDrawer(false);
+          setSelectedBasketId(null);
+        }}
+        basket={selectedBasket || null}
+        products={products}
+        onAddProduct={handleAddProduct}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+      />
+
+      <FinalizeLiveModal
+        isOpen={showFinalizeModal}
+        onClose={() => setShowFinalizeModal(false)}
+        onConfirm={handleFinalizeLive}
+        baskets={baskets}
+        totalRevenue={stats.facturacion_total}
+        isProcessing={isProcessingFinalization}
+      />
+    </>
   );
 }

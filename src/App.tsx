@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import LiveAnnouncementBanner from './components/Layout/LiveAnnouncementBanner';
@@ -13,9 +13,14 @@ import WhatsAppManager from './components/WhatsApp/WhatsAppManager';
 import { mockNotifications, markNotificationAsRead, addNotification } from './data/mockData';
 import type { Notification } from './types/database';
 import { useActiveLive } from './hooks/useActiveLive';
+import { seedDatabase } from './utils/seedData';
 
 function App() {
   const [activeModule, setActiveModule] = useState('pedidos');
+
+  useEffect(() => {
+    seedDatabase();
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const { activeLive, shouldShowBanner, dismissBanner } = useActiveLive();
