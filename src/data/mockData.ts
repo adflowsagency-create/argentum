@@ -348,6 +348,10 @@ export const addNotification = (notification: Omit<Notification, 'id' | 'created
   mockNotifications.unshift(newNotification);
 };
 
+export const addLive = (live: Live & { ventas_total: number; pedidos_count: number; estado: 'programado' | 'activo' | 'finalizado' }) => {
+  mockLives.unshift(live);
+};
+
 export const markNotificationAsRead = (notificationId: string) => {
   const index = mockNotifications.findIndex(n => n.id === notificationId);
   if (index !== -1) {

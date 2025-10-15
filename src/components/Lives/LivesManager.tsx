@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Live } from '../../types/database';
+import { addLive } from '../../data/mockData';
 import LiveDetailsModal from './LiveDetailsModal';
 import EditLiveModal from './EditLiveModal';
 import ActiveLiveModal from './ActiveLiveModal';
@@ -18,6 +19,12 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [showActiveLive, setShowActiveLive] = useState(false);
   const [lives, setLives] = useState<Live[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // New live form state
+  const [newLiveTitle, setNewLiveTitle] = useState('');
+  const [newLiveDate, setNewLiveDate] = useState('');
+  const [newLiveTime, setNewLiveTime] = useState('20:00');
+  const [newLiveNotes, setNewLiveNotes] = useState('');
 
   const loadLives = async () => {
     const { data, error } = await supabase
@@ -101,6 +108,62 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       default:
         break;
     }
+  };
+
+  const handleCreateLive = async () => {
+    if (!newLiveTitle.trim()) {
+      alert('El título es obligatorio');
+      return;
+    }
+
+    if (!newLiveDate) {
+      alert('La fecha es obligatoria');
+      return;
+    }
+
+    // Combine date and time
+    const fechaHora = new Date(`${newLiveDate}T${newLiveTime}`).toISOString();
+
+    const newLive = {
+      live_id: Date.now().toString(),
+      titulo: newLiveTitle,
+      fecha_hora: fechaHora,
+      estado: 'programado' as const,
+      notas: newLiveNotes || undefined,
+      created_at: new Date().toISOString(),
+      ventas_total: 0,
+      pedidos_count: 0
+    };
+
+    // Add to mock data
+    addLive(newLive);
+
+    // Reload lives to show the new one
+    await loadLives();
+
+    // Add notification
+    onAddNotification({
+      title: 'Live Creado',
+      message: `Nuevo live "${newLiveTitle}" programado exitosamente`,
+      type: 'success',
+      read: false
+    });
+
+    // Reset form and close modal
+    setNewLiveTitle('');
+    setNewLiveDate('');
+    setNewLiveTime('20:00');
+    setNewLiveNotes('');
+    setShowCrearLive(false);
+  };
+
+  const handleCancelCreateLive = () => {
+    // Reset form and close modal
+    setNewLiveTitle('');
+    setNewLiveDate('');
+    setNewLiveTime('20:00');
+    setNewLiveNotes('');
+    setShowCrearLive(false);
   };
 
   return (
@@ -315,6 +378,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                 </label>
                 <input
                   type="text"
+                  value={newLiveTitle}
+                  onChange={(e) => setNewLiveTitle(e.target.value)}
                   placeholder="Ej: Nuevos Productos de Temporada"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
@@ -327,7 +392,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                   </label>
                   <input
                     type="date"
-                    defaultValue={new Date().toISOString().split('T')[0]}
+                    value={newLiveDate}
+                    onChange={(e) => setNewLiveDate(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
@@ -338,7 +404,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                   </label>
                   <input
                     type="time"
-                    defaultValue="20:00"
+                    value={newLiveTime}
+                    onChange={(e) => setNewLiveTime(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
@@ -350,6 +417,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                 </label>
                 <textarea
                   rows={3}
+                  value={newLiveNotes}
+                  onChange={(e) => setNewLiveNotes(e.target.value)}
                   placeholder="Describe el contenido del live..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                 />
@@ -358,13 +427,13 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
             
             <div className="flex space-x-3 mt-6">
               <button
-                onClick={() => setShowCrearLive(false)}
+                onClick={handleCancelCreateLive}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={() => setShowCrearLive(false)}
+                onClick={handleCreateLive}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Crear Live
