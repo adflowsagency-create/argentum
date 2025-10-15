@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import type { Live } from '../../types/database';
-import { addLive, mockLives } from '../../data/mockData';
+import { addLive, deleteLive, mockLives } from '../../data/mockData';
 import LiveDetailsModal from './LiveDetailsModal';
 import EditLiveModal from './EditLiveModal';
 import ActiveLiveModal from './ActiveLiveModal';
@@ -24,6 +25,11 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [newLiveDate, setNewLiveDate] = useState('');
   const [newLiveTime, setNewLiveTime] = useState('20:00');
   const [newLiveNotes, setNewLiveNotes] = useState('');
+  
+  // Delete confirmation state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [liveToDelete, setLiveToDelete] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const loadLives = async () => {
     // Use mock data instead of Supabase

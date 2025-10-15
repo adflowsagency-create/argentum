@@ -352,6 +352,13 @@ export const addLive = (live: Live & { ventas_total: number; pedidos_count: numb
   mockLives.unshift(live);
 };
 
+export const deleteLive = (liveId: string) => {
+  const index = mockLives.findIndex(l => l.live_id === liveId);
+  if (index !== -1) {
+    mockLives.splice(index, 1);
+  }
+};
+
 export const markNotificationAsRead = (notificationId: string) => {
   const index = mockNotifications.findIndex(n => n.id === notificationId);
   if (index !== -1) {
