@@ -126,8 +126,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     // Add to mock data
     addLive(newLive);
 
-    // Reload lives to show the new one
-    await loadLives();
+    // Update local state immediately
+    setLives([...mockLives]);
 
     // Add notification
     onAddNotification({
