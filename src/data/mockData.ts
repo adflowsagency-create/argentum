@@ -181,7 +181,7 @@ export const mockPedidos: (Pedido & { cliente: Cliente })[] = [
     impuestos: 51.20,
     total: 371.20,
     empleado: 'Carlos Ruiz',
-    live_id: 'live1',
+    live_id: '550e8400-e29b-41d4-a716-446655440001',
     created_at: '2024-01-15T14:20:00Z',
     updated_at: '2024-01-15T14:45:00Z',
     cliente: mockClientes[1]
@@ -203,7 +203,7 @@ export const mockPedidos: (Pedido & { cliente: Cliente })[] = [
 // Mock Lives
 export let mockLives: (Live & { ventas_total: number; pedidos_count: number; estado: 'programado' | 'activo' | 'finalizado' })[] = [
   {
-    live_id: '1',
+    live_id: '550e8400-e29b-41d4-a716-446655440001',
     titulo: 'Nuevas Colecciones de Invierno',
     fecha_hora: '2024-01-15T19:00:00Z',
     notas: 'Presentación de collares y pulseras de la nueva temporada',
@@ -213,7 +213,7 @@ export let mockLives: (Live & { ventas_total: number; pedidos_count: number; est
     estado: 'finalizado'
   },
   {
-    live_id: '2',
+    live_id: '550e8400-e29b-41d4-a716-446655440002',
     titulo: 'Especial San Valentín',
     fecha_hora: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
     notas: 'Productos románticos con descuentos especiales',
@@ -223,7 +223,7 @@ export let mockLives: (Live & { ventas_total: number; pedidos_count: number; est
     estado: 'programado'
   },
   {
-    live_id: '3',
+    live_id: '550e8400-e29b-41d4-a716-446655440003',
     titulo: 'Live Nocturno - Ofertas Flash',
     fecha_hora: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago (should be active)
     notas: 'Liquidación de inventario selecto',

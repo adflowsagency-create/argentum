@@ -119,7 +119,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     const fechaHora = new Date(`${newLiveDate}T${newLiveTime}`).toISOString();
 
     const newLive = {
-      live_id: Date.now().toString(),
+      live_id: generateUUID(),
       titulo: newLiveTitle,
       fecha_hora: fechaHora,
       estado: 'programado' as const,
