@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
 import type { Live } from '../../types/database';
-import { addLive } from '../../data/mockData';
+import { addLive, mockLives } from '../../data/mockData';
 import LiveDetailsModal from './LiveDetailsModal';
 import EditLiveModal from './EditLiveModal';
 import ActiveLiveModal from './ActiveLiveModal';
@@ -17,7 +16,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [showLiveDetails, setShowLiveDetails] = useState(false);
   const [showEditLive, setShowEditLive] = useState(false);
   const [showActiveLive, setShowActiveLive] = useState(false);
-  const [lives, setLives] = useState<Live[]>([]);
+  const [lives, setLives] = useState<(Live & { ventas_total: number; pedidos_count: number; estado: 'programado' | 'activo' | 'finalizado' })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // New live form state
@@ -27,19 +26,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [newLiveNotes, setNewLiveNotes] = useState('');
 
   const loadLives = async () => {
-    const { data, error } = await supabase
-      .from('lives')
-      .select('*')
-      .order('fecha_hora', { ascending: false });
-
-    if (error) {
-      console.error('Error loading lives:', error);
-      return;
-    }
-
-    if (data) {
-      setLives(data);
-    }
+    // Use mock data instead of Supabase
+    setLives([...mockLives]);
     setIsLoading(false);
   };
 
