@@ -311,6 +311,37 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     }
   };
 
+  const handleManualStart = async (liveId: string) => {
+    try {
+      // Update live status to 'activo'
+      const { error } = await supabase
+        .from('lives')
+        .update({ estado: 'activo' })
+        .eq('live_id', liveId);
+
+      if (error) throw error;
+
+      // Reload lives
+      await loadLives();
+
+      // Add success notification
+      const liveData = lives.find(l => l.live_id === liveId);
+      onAddNotification({
+        title: 'Live Iniciado',
+        message: `El live "${liveData?.titulo || 'seleccionado'}" ha comenzado`,
+        type: 'success',
+        read: false
+      });
+    } catch (error) {
+      console.error('Error starting live manually:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo iniciar el live',
+        type: 'error',
+        read: false
+      });
+    }
+  };
   return (
     <div className="p-4 lg:p-6">
       {/* Header */}
