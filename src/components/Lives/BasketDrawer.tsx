@@ -28,14 +28,16 @@ export default function BasketDrawer({
   const formatCurrency = (amount: number) =>
     `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
 
-  const availableProducts = products.filter(
-    (p) =>
+  const availableProducts = products.filter((p) => {
+    const availableStock = p.stockDisponible ?? p.cantidad_en_stock;
+    return (
       p.activo &&
-      p.cantidad_en_stock > 0 &&
+      availableStock > 0 &&
       !basket.items.some((item) => item.product_id === p.product_id) &&
       (p.nombre.toLowerCase().includes(productSearch.toLowerCase()) ||
         p.categoria.toLowerCase().includes(productSearch.toLowerCase()))
-  );
+    );
+  });
 
   const handleAddProduct = async (productId: string) => {
     await onAddProduct(basket.basket_id, productId);
@@ -80,65 +82,76 @@ export default function BasketDrawer({
               </div>
             ) : (
               <div className="space-y-3">
-                {basket.items.map((item) => (
-                  <div
-                    key={item.basket_item_id}
-                    className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-                  >
-                    <div className="flex items-start space-x-3">
-                      {item.product.imagen_url && (
-                        <img
-                          src={item.product.imagen_url}
-                          alt={item.product.nombre}
-                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900">{item.product.nombre}</h4>
-                        <p className="text-sm text-gray-500">{item.product.categoria}</p>
-                        <p className="text-sm font-medium text-green-600 mt-1">
-                          {formatCurrency(item.precio_unitario_snapshot)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => onRemoveItem(item.basket_item_id)}
-                        className="p-1 text-red-400 hover:text-red-600 transition-colors"
-                        title="Eliminar producto"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                {basket.items.map((item) => {
+                  const productFromInventory = products.find(
+                    (product) => product.product_id === item.product_id
+                  );
+                  const remainingStock =
+                    productFromInventory?.stockDisponible ??
+                    productFromInventory?.cantidad_en_stock ??
+                    Math.max(item.product.cantidad_en_stock - item.cantidad, 0);
+                  const maxQuantity = remainingStock + item.cantidad;
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center space-x-2">
+                  return (
+                    <div
+                      key={item.basket_item_id}
+                      className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                    >
+                      <div className="flex items-start space-x-3">
+                        {item.product.imagen_url && (
+                          <img
+                            src={item.product.imagen_url}
+                            alt={item.product.nombre}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900">{item.product.nombre}</h4>
+                          <p className="text-sm text-gray-500">{item.product.categoria}</p>
+                          <p className="text-sm font-medium text-green-600 mt-1">
+                            {formatCurrency(item.precio_unitario_snapshot)}
+                          </p>
+                        </div>
                         <button
-                          onClick={() =>
-                            onUpdateQuantity(item.basket_item_id, item.cantidad - 1)
-                          }
-                          className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
-                          disabled={item.cantidad <= 1}
+                          onClick={() => onRemoveItem(item.basket_item_id)}
+                          className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                          title="Eliminar producto"
                         >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-12 text-center font-medium">{item.cantidad}</span>
-                        <button
-                          onClick={() =>
-                            onUpdateQuantity(item.basket_item_id, item.cantidad + 1)
-                          }
-                          className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
-                          disabled={item.cantidad >= item.product.cantidad_en_stock}
-                        >
-                          <Plus className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
-                          {formatCurrency(item.total_item)}
-                        </p>
+
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() =>
+                              onUpdateQuantity(item.basket_item_id, item.cantidad - 1)
+                            }
+                            className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
+                            disabled={item.cantidad <= 1}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="w-12 text-center font-medium">{item.cantidad}</span>
+                          <button
+                            onClick={() =>
+                              onUpdateQuantity(item.basket_item_id, item.cantidad + 1)
+                            }
+                            className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
+                            disabled={item.cantidad >= maxQuantity}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatCurrency(item.total_item)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -181,8 +194,8 @@ export default function BasketDrawer({
                             {product.nombre}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {formatCurrency(product.precio_unitario)} - Stock:{' '}
-                            {product.cantidad_en_stock}
+                            {formatCurrency(product.precio_unitario)} - Disponible:{' '}
+                            {product.stockDisponible ?? product.cantidad_en_stock}
                           </p>
                         </div>
                       </div>

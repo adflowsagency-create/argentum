@@ -62,8 +62,10 @@ export default function ActiveLiveModal({
       .eq('live_id', liveId)
       .eq('estado', 'abierta');
 
+    let basketsWithDetails: BasketWithDetails[] = [];
+
     if (basketsData) {
-      const basketsWithDetails: BasketWithDetails[] = [];
+      const loadedBaskets: BasketWithDetails[] = [];
 
       for (const basket of basketsData) {
         const { data: cliente } = await supabase
@@ -93,7 +95,7 @@ export default function ActiveLiveModal({
         }
 
         if (cliente) {
-          basketsWithDetails.push({
+          loadedBaskets.push({
             ...basket,
             cliente,
             items: itemsWithProducts,
@@ -101,6 +103,7 @@ export default function ActiveLiveModal({
         }
       }
 
+      basketsWithDetails = loadedBaskets;
       setBaskets(basketsWithDetails);
 
       const totalRevenue = basketsWithDetails.reduce((sum, b) => sum + b.total, 0);
@@ -118,7 +121,23 @@ export default function ActiveLiveModal({
 
     const { data: productsData } = await supabase.from('products').select('*').eq('activo', true);
     if (productsData) {
-      setProducts(productsData);
+      const reservedQuantities = basketsWithDetails.reduce<Record<string, number>>((acc, basket) => {
+        for (const item of basket.items) {
+          acc[item.product_id] = (acc[item.product_id] || 0) + item.cantidad;
+        }
+        return acc;
+      }, {});
+
+      const productsWithAvailability = productsData.map((product) => {
+        const reserved = reservedQuantities[product.product_id] || 0;
+        const available = Math.max(product.cantidad_en_stock - reserved, 0);
+        return {
+          ...product,
+          stockDisponible: available,
+        };
+      });
+
+      setProducts(productsWithAvailability);
     }
 
     const { data: clientesData } = await supabase.from('clientes').select('*');
@@ -188,7 +207,8 @@ export default function ActiveLiveModal({
 
   const handleAddProduct = async (basketId: string, productId: string) => {
     const product = products.find((p) => p.product_id === productId);
-    if (!product || product.cantidad_en_stock < 1) {
+    const availableStock = product ? product.stockDisponible ?? product.cantidad_en_stock : 0;
+    if (!product || availableStock < 1) {
       onAddNotification({
         title: 'Stock Insuficiente',
         message: 'No hay stock disponible para este producto',
@@ -245,10 +265,16 @@ export default function ActiveLiveModal({
     if (!item) return;
 
     const product = products.find((p) => p.product_id === item.product_id);
-    if (!product || newQuantity > product.cantidad_en_stock) {
+    if (!product) {
+      return;
+    }
+
+    const productAvailableStock = (product.stockDisponible ?? product.cantidad_en_stock) + item.cantidad;
+
+    if (newQuantity > productAvailableStock) {
       onAddNotification({
         title: 'Stock Insuficiente',
-        message: `Solo hay ${product?.cantidad_en_stock || 0} unidades disponibles`,
+        message: `Solo hay ${productAvailableStock} unidades disponibles`,
         type: 'warning',
         read: false,
       });
