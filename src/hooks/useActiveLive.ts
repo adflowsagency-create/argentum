@@ -47,7 +47,7 @@ export function useActiveLive() {
               
               const { error: updateError } = await supabase
                 .from('lives')
-                .update({ estado: 'activo' })
+                .update({ estado: 'activa' })
                 .eq('live_id', live.live_id);
 
               if (updateError) {
@@ -61,7 +61,7 @@ export function useActiveLive() {
         const { data: activeLives, error } = await supabase
           .from('lives')
           .select('*')
-          .eq('estado', 'activo')
+          .eq('estado', 'activa')
           .order('fecha_hora', { ascending: false })
           .limit(1);
 
