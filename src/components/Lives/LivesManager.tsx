@@ -132,38 +132,10 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     return () => clearInterval(interval);
   }, [loadLives]);
 
+  // Removed auto-open logic - users must click to open active live
   useEffect(() => {
-    const prevLives = prevLivesRef.current;
-    const findNewlyActivatedLive = () =>
-      lives.find((live) => {
-        if (live.estado !== 'activa') return false;
-        const prevLive = prevLives.find((prev) => prev.live_id === live.live_id);
-        return !prevLive || prevLive.estado !== 'activa';
-      });
-
-    if (!isWatchingActiveLive) {
-      const newlyActive = findNewlyActivatedLive();
-      if (newlyActive && newlyActive.live_id !== dismissedActiveLiveId) {
-        setIsWatchingActiveLive(true);
-      }
-      prevLivesRef.current = lives;
-      return;
-    }
-
-    const newlyActive = findNewlyActivatedLive();
-
-    if (newlyActive) {
-      const matchesSelection = !selectedLive || selectedLive === newlyActive.live_id;
-      const notDismissed = dismissedActiveLiveId !== newlyActive.live_id;
-
-      if (matchesSelection && notDismissed) {
-        setSelectedLive(newlyActive.live_id);
-        setShowActiveLive(true);
-      }
-    }
-
     prevLivesRef.current = lives;
-  }, [lives, selectedLive, dismissedActiveLiveId, isWatchingActiveLive]);
+  }, [lives]);
 
   const lastActiveLiveIdRef = useRef<string | null>(null);
 
@@ -175,41 +147,18 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     }
   }, [activeLive, loadLives]);
 
+  // Clean up dismissed state when live is no longer active
   useEffect(() => {
-    if (!activeLive) {
-      if (dismissedActiveLiveId) {
-        const stillActive = lives.some(
-          (live) => live.live_id === dismissedActiveLiveId && live.estado === 'activa'
-        );
+    if (!activeLive && dismissedActiveLiveId) {
+      const stillActive = lives.some(
+        (live) => live.live_id === dismissedActiveLiveId && live.estado === 'activa'
+      );
 
-        if (!stillActive) {
-          setDismissedActiveLiveId(null);
-        }
+      if (!stillActive) {
+        setDismissedActiveLiveId(null);
       }
-
-      if (!isWatchingActiveLive) {
-        setIsWatchingActiveLive(true);
-      }
-
-      return;
     }
-
-    if (!isWatchingActiveLive) {
-      if (activeLive.live_id !== dismissedActiveLiveId) {
-        setIsWatchingActiveLive(true);
-      }
-      return;
-    }
-
-    if (dismissedActiveLiveId === activeLive.live_id) {
-      return;
-    }
-
-    if (!selectedLive || selectedLive === activeLive.live_id) {
-      setSelectedLive(activeLive.live_id);
-      setShowActiveLive(true);
-    }
-  }, [activeLive, dismissedActiveLiveId, isWatchingActiveLive, lives, selectedLive]);
+  }, [activeLive, dismissedActiveLiveId, lives]);
 
   const formatCurrency = (amount: number) => `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
   
