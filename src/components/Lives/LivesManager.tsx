@@ -136,9 +136,9 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     const prevLives = prevLivesRef.current;
     const findNewlyActivatedLive = () =>
       lives.find((live) => {
-        if (live.estado !== 'activo') return false;
+        if (live.estado !== 'activa') return false;
         const prevLive = prevLives.find((prev) => prev.live_id === live.live_id);
-        return !prevLive || prevLive.estado !== 'activo';
+        return !prevLive || prevLive.estado !== 'activa';
       });
 
     if (!isWatchingActiveLive) {
@@ -179,7 +179,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     if (!activeLive) {
       if (dismissedActiveLiveId) {
         const stillActive = lives.some(
-          (live) => live.live_id === dismissedActiveLiveId && live.estado === 'activo'
+          (live) => live.live_id === dismissedActiveLiveId && live.estado === 'activa'
         );
 
         if (!stillActive) {
@@ -227,7 +227,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     switch (estado) {
       case 'programado':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'activo':
+      case 'activa':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'finalizado':
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -240,7 +240,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     switch (estado) {
       case 'programado':
         return Calendar;
-      case 'activo':
+      case 'activa':
         return Play;
       case 'finalizado':
         return Pause;
@@ -264,7 +264,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       case 'programado':
         setShowEditLive(true);
         break;
-      case 'activo':
+      case 'activa':
         setShowActiveLive(true);
         break;
       default:
@@ -460,10 +460,10 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
 
   const handleManualStart = async (liveId: string) => {
     try {
-      // Update live status to 'activo'
+      // Update live status to 'activa'
       const { error } = await supabase
         .from('lives')
-        .update({ estado: 'activo' })
+        .update({ estado: 'activa' })
         .eq('live_id', liveId);
 
       if (error) throw error;
@@ -599,7 +599,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        {live.estado === 'activo' && (
+                        {live.estado === 'activa' && (
                           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
                         )}
                         <h4 className="text-lg font-medium text-gray-900">
@@ -696,8 +696,8 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                             Ver Detalles
                           </button>
                         )}
-                        {live.estado === 'activo' && (
-                          <button 
+                        {live.estado === 'activa' && (
+                          <button
                             className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();

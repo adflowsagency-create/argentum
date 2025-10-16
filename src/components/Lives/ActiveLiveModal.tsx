@@ -173,7 +173,7 @@ export default function ActiveLiveModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    if (live && live.estado !== 'activo') {
+    if (live && live.estado !== 'activa') {
       onClose();
     }
   }, [isOpen, live, onClose]);
