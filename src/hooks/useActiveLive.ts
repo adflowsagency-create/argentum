@@ -6,7 +6,7 @@ export function useActiveLive() {
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    const checkActiveLive = () => {
+    const checkActiveLive = async () => {
       try {
         // Get lives that are currently active
         const { data: activeLives, error } = await supabase
