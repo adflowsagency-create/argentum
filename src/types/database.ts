@@ -10,6 +10,7 @@ export interface Product {
   activo: boolean;
   created_at: string;
   updated_at: string;
+  stockDisponible?: number;
 }
 
 export interface Cliente {

@@ -75,47 +75,50 @@ export default function ProductSidebar({ products, onAddNewProduct }: ProductSid
               <p className="text-sm">No hay productos disponibles</p>
             </div>
           ) : (
-            filteredProducts.map((product) => (
-              <div
-                key={product.product_id}
-                className="bg-white rounded-lg p-3 border border-gray-200 hover:border-green-300 transition-colors"
-              >
-                <div className="flex items-start space-x-3">
-                  {product.imagen_url && (
-                    <img
-                      src={product.imagen_url}
-                      alt={product.nombre}
-                      className="w-12 h-12 rounded object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 text-sm truncate">
-                      {product.nombre}
-                    </h4>
-                    <p className="text-xs text-gray-500">{product.categoria}</p>
-                    <p className="text-sm font-semibold text-green-600 mt-1">
-                      {formatCurrency(product.precio_unitario)}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span
-                        className={`text-xs ${
-                          product.cantidad_en_stock > 10
-                            ? 'text-gray-600'
-                            : product.cantidad_en_stock > 0
-                            ? 'text-orange-600'
-                            : 'text-red-600'
-                        }`}
-                      >
-                        Stock: {product.cantidad_en_stock}
-                      </span>
-                      {product.cantidad_en_stock === 0 && (
-                        <span className="text-xs font-medium text-red-600">Agotado</span>
-                      )}
+            filteredProducts.map((product) => {
+              const availableStock = product.stockDisponible ?? product.cantidad_en_stock;
+              return (
+                <div
+                  key={product.product_id}
+                  className="bg-white rounded-lg p-3 border border-gray-200 hover:border-green-300 transition-colors"
+                >
+                  <div className="flex items-start space-x-3">
+                    {product.imagen_url && (
+                      <img
+                        src={product.imagen_url}
+                        alt={product.nombre}
+                        className="w-12 h-12 rounded object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm truncate">
+                        {product.nombre}
+                      </h4>
+                      <p className="text-xs text-gray-500">{product.categoria}</p>
+                      <p className="text-sm font-semibold text-green-600 mt-1">
+                        {formatCurrency(product.precio_unitario)}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span
+                          className={`text-xs ${
+                            availableStock > 10
+                              ? 'text-gray-600'
+                              : availableStock > 0
+                              ? 'text-orange-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          Disponible: {availableStock}
+                        </span>
+                        {availableStock === 0 && (
+                          <span className="text-xs font-medium text-red-600">Agotado</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
