@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Search, Plus, Power, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Live, BasketWithDetails, Product, Cliente, LiveStats } from '../../types/database';
