@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3, X } from 'lucide-react';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, Clock } from 'lucide-react';
 import type { Live } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import LiveDetailsModal from './LiveDetailsModal';
@@ -14,6 +14,32 @@ interface LivesManagerProps {
 // Helper para generar UUID
 const generateUUID = () => {
   return crypto.randomUUID();
+};
+
+// Helper function to check if manual start should be available (15 minutes before)
+const canManuallyStart = (fechaHora: string): boolean => {
+  const liveTime = new Date(fechaHora);
+  const now = new Date();
+  const fifteenMinutesBefore = new Date(liveTime.getTime() - 15 * 60 * 1000);
+  return now >= fifteenMinutesBefore && now < liveTime;
+};
+
+// Helper function to get time until live starts
+const getTimeUntilLive = (fechaHora: string): string => {
+  const liveTime = new Date(fechaHora);
+  const now = new Date();
+  const diffMs = liveTime.getTime() - now.getTime();
+  
+  if (diffMs <= 0) return 'Iniciando...';
+  
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMinutes / 60);
+  
+  if (diffHours > 0) {
+    return `${diffHours}h ${diffMinutes % 60}m`;
+  } else {
+    return `${diffMinutes}m`;
+  }
 };
 
 export default function LivesManager({ onAddNotification }: LivesManagerProps) {
@@ -414,6 +440,12 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                           <Calendar className="h-4 w-4" />
                           <span>{formatDateTime(live.fecha_hora)}</span>
                         </div>
+                        {live.estado === 'programado' && (
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{getTimeUntilLive(live.fecha_hora)}</span>
+                          </div>
+                        )}
                         {live.estado === 'finalizado' && (
                           <>
                             <div className="flex items-center space-x-1">
@@ -444,6 +476,18 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
                       <div className="flex space-x-2">
                         {live.estado === 'programado' && (
                           <>
+                            {canManuallyStart(live.fecha_hora) && (
+                              <button 
+                                className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleManualStart(live.live_id);
+                                }}
+                              >
+                                <Play className="h-3 w-3 mr-1" />
+                                Iniciar Ahora
+                              </button>
+                            )}
                             <button 
                               className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
                               onClick={(e) => {
