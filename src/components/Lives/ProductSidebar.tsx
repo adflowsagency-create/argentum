@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { Search, Plus, Package } from 'lucide-react';
+import { Search, Plus, Package, X } from 'lucide-react';
 import type { Product } from '../../types/database';
 
 interface ProductSidebarProps {
   products: Product[];
-  onAddNewProduct: (product: { nombre: string; precio_unitario: number; cantidad_en_stock: number }) => Promise<void>;
+  onAddNewProduct: (product: {
+    nombre: string;
+    precio_unitario: number;
+    cantidad_en_stock: number;
+  }) => Promise<void>;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export default function ProductSidebar({ products, onAddNewProduct }: ProductSidebarProps) {
+export default function ProductSidebar({ products, onAddNewProduct, isOpen, onClose }: ProductSidebarProps) {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -43,17 +49,30 @@ export default function ProductSidebar({ products, onAddNewProduct }: ProductSid
   };
 
   return (
-    <div className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full">
+    <div
+      className={`w-full sm:w-80 bg-gray-50 border-l border-gray-200 flex flex-col h-full transition-transform duration-300 ease-in-out sm:transition-none fixed inset-y-0 right-0 z-50 sm:static sm:z-auto shadow-xl sm:shadow-none sm:translate-x-0 sm:pointer-events-auto sm:flex-shrink-0 ${
+        isOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'
+      }`}
+    >
       <div className="p-4 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-gray-900">Productos</h3>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            title="Agregar nuevo producto"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              title="Agregar nuevo producto"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="sm:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Cerrar catálogo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Search, Plus, Power } from 'lucide-react';
+import { X, Search, Plus, Power, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Live, BasketWithDetails, Product, Cliente, LiveStats } from '../../types/database';
 import LiveStatsPanel from './LiveStatsPanel';
@@ -42,6 +42,23 @@ export default function ActiveLiveModal({
   const [isProcessingFinalization, setIsProcessingFinalization] = useState(false);
 
   const [basketSearch, setBasketSearch] = useState('');
+  const [isProductSidebarOpen, setIsProductSidebarOpen] = useState(false);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(false);
+
+  useEffect(() => {
+    const handleLayoutChange = () => {
+      if (typeof window === 'undefined') return;
+
+      const isDesktop = window.innerWidth >= 640;
+      setIsDesktopLayout(isDesktop);
+      setIsProductSidebarOpen(isDesktop);
+    };
+
+    handleLayoutChange();
+    window.addEventListener('resize', handleLayoutChange);
+
+    return () => window.removeEventListener('resize', handleLayoutChange);
+  }, []);
 
   const loadLiveData = useCallback(async () => {
     if (!liveId) return;
@@ -447,6 +464,19 @@ export default function ActiveLiveModal({
             </div>
             <div className="flex items-center space-x-3">
               <button
+                onClick={() =>
+                  setIsProductSidebarOpen((prev) => (isDesktopLayout ? prev : !prev))
+                }
+                className="sm:hidden px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                {isProductSidebarOpen ? (
+                  <PanelRightClose className="h-4 w-4" />
+                ) : (
+                  <PanelRightOpen className="h-4 w-4" />
+                )}
+                <span>{isProductSidebarOpen ? 'Ocultar catálogo' : 'Ver catálogo'}</span>
+              </button>
+              <button
                 onClick={() => setShowFinalizeModal(true)}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
               >
@@ -462,7 +492,7 @@ export default function ActiveLiveModal({
             </div>
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden flex-col sm:flex-row">
             <div className="flex-1 flex flex-col p-6 overflow-y-auto">
               <LiveStatsPanel stats={stats} />
 
@@ -502,7 +532,7 @@ export default function ActiveLiveModal({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredBaskets.map((basket) => (
                     <BasketCard
                       key={basket.basket_id}
@@ -518,7 +548,20 @@ export default function ActiveLiveModal({
               )}
             </div>
 
-            <ProductSidebar products={products} onAddNewProduct={handleAddNewProduct} />
+            {!isDesktopLayout && (
+              <div
+                className={`fixed inset-0 bg-black/40 transition-opacity duration-300 ${
+                  isProductSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                } sm:hidden z-40`}
+                onClick={() => setIsProductSidebarOpen(false)}
+              />
+            )}
+            <ProductSidebar
+              products={products}
+              onAddNewProduct={handleAddNewProduct}
+              isOpen={isDesktopLayout || isProductSidebarOpen}
+              onClose={() => setIsProductSidebarOpen(false)}
+            />
           </div>
         </div>
       </div>
