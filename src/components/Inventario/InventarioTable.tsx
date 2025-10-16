@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Upload, Download, CreditCard as Edit, Trash2, AlertTriangle, Package } from 'lucide-react';
 import type { Product } from '../../types/database';
-import { mockProducts, addProduct, updateProduct } from '../../data/mockData';
+import { productService } from '../../services/productService';
 import NuevoProductoModal from './NuevoProductoModal';
 import ReabastecerModal from './ReabastecerModal';
 
@@ -12,6 +12,8 @@ interface InventarioTableProps {
 const categorias = ['Todas', 'Collares', 'Pulseras', 'Brazaletes', 'Dijes', 'Anillos', 'Aretes'];
 
 export default function InventarioTable({ onAddNotification }: InventarioTableProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('Todas');
   const [showStockBajo, setShowStockBajo] = useState(false);
@@ -19,7 +21,29 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
   const [showReabastecer, setShowReabastecer] = useState(false);
   const [showNuevoProducto, setShowNuevoProducto] = useState(false);
 
-  const filteredProducts = mockProducts.filter(product => {
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      const data = await productService.getAll();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudieron cargar los productos',
+        type: 'error',
+        read: false
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategoria = selectedCategoria === 'Todas' || product.categoria === selectedCategoria;
@@ -41,43 +65,57 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
     return { color: 'text-green-600', bg: 'bg-green-100', label: 'En stock' };
   };
 
-  const handleCreateProduct = (productData: any) => {
-    const newProduct: Product = {
-      product_id: `${Date.now()}`,
-      ...productData,
-      activo: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+  const handleCreateProduct = async (productData: any) => {
+    try {
+      await productService.create(productData);
+      await loadProducts();
 
-    addProduct(newProduct);
-    
-    onAddNotification({
-      title: 'Producto Creado',
-      message: `Nuevo producto "${productData.nombre}" agregado al inventario`,
-      type: 'success',
-      read: false
-    });
+      onAddNotification({
+        title: 'Producto Creado',
+        message: `Nuevo producto "${productData.nombre}" agregado al inventario`,
+        type: 'success',
+        read: false
+      });
+    } catch (error) {
+      console.error('Error creating product:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo crear el producto',
+        type: 'error',
+        read: false
+      });
+    }
   };
 
-  const handleRestock = (restockData: any) => {
-    restockData.items.forEach((item: any) => {
-      const product = mockProducts.find(p => p.product_id === item.product_id);
-      if (product) {
-        updateProduct(item.product_id, {
-          cantidad_en_stock: product.cantidad_en_stock + item.cantidad,
-          costo_unitario: item.costo_unitario || product.costo_unitario,
-          updated_at: new Date().toISOString()
-        });
+  const handleRestock = async (restockData: any) => {
+    try {
+      for (const item of restockData.items) {
+        await productService.updateStock(item.product_id, item.cantidad);
+
+        if (item.costo_unitario) {
+          await productService.update(item.product_id, {
+            costo_unitario: item.costo_unitario
+          });
+        }
       }
-    });
-    
-    onAddNotification({
-      title: 'Reabastecimiento Completado',
-      message: `Se reabastecieron ${restockData.items.length} productos`,
-      type: 'success',
-      read: false
-    });
+
+      await loadProducts();
+
+      onAddNotification({
+        title: 'Reabastecimiento Completado',
+        message: `Se reabastecieron ${restockData.items.length} productos`,
+        type: 'success',
+        read: false
+      });
+    } catch (error) {
+      console.error('Error restocking:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo completar el reabastecimiento',
+        type: 'error',
+        read: false
+      });
+    }
   };
 
   return (
@@ -154,6 +192,12 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
       </div>
 
       {/* Products Table/Cards */}
+      {isLoading ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-500 mt-4">Cargando productos...</p>
+        </div>
+      ) : (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
@@ -312,8 +356,9 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
           })}
         </div>
       </div>
+      )}
 
-      {filteredProducts.length === 0 && (
+      {!isLoading && filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Package className="h-12 w-12 mx-auto" />
@@ -345,7 +390,7 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
         isOpen={showReabastecer}
         onClose={() => setShowReabastecer(false)}
         onRestock={handleRestock}
-        products={mockProducts}
+        products={products}
       />
     </div>
   );

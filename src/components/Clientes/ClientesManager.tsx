@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Eye, CreditCard as Edit, Trash2, Phone, Mail, MapPin, Tag, User, X } from 'lucide-react';
 import type { Cliente, EstadoClientePedido } from '../../types/database';
-import { mockClientes } from '../../data/mockData';
+import { clienteService } from '../../services/clienteService';
 
 const estadoColors: Record<EstadoClientePedido, string> = {
   'Enviado': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -20,6 +20,8 @@ const tagColors = [
 ];
 
 export default function ClientesManager() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('Todos');
   const [selectedEstado, setSelectedEstado] = useState<EstadoClientePedido | 'Todos'>('Todos');
@@ -34,54 +36,68 @@ export default function ClientesManager() {
     tags: [] as string[]
   });
 
-  const handleCreateCliente = () => {
+  const loadClientes = async () => {
+    try {
+      setIsLoading(true);
+      const data = await clienteService.getAll();
+      setClientes(data);
+    } catch (error) {
+      console.error('Error loading clientes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClientes();
+  }, []);
+
+  const handleCreateCliente = async () => {
     if (!nuevoCliente.nombre.trim() || !nuevoCliente.telefono_whatsapp.trim()) {
       alert('Nombre y teléfono son obligatorios');
       return;
     }
 
-    // Check if phone already exists
-    const existingCliente = mockClientes.find(c => c.telefono_whatsapp === nuevoCliente.telefono_whatsapp);
+    const existingCliente = clientes.find(c => c.telefono_whatsapp === nuevoCliente.telefono_whatsapp);
     if (existingCliente) {
       alert('Ya existe un cliente con este teléfono');
       return;
     }
 
-    // Create new client
-    const newCliente: Cliente = {
-      cliente_id: `cliente_${Date.now()}`,
-      nombre: nuevoCliente.nombre,
-      telefono_whatsapp: nuevoCliente.telefono_whatsapp,
-      email: nuevoCliente.email || undefined,
-      direccion: nuevoCliente.direccion || undefined,
-      tags: nuevoCliente.tags.length > 0 ? nuevoCliente.tags : ['Nuevo Cliente'],
-      ltv: 0,
-      frecuencia: 0,
-      fecha_alta: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    try {
+      const newClienteData = {
+        nombre: nuevoCliente.nombre,
+        telefono_whatsapp: nuevoCliente.telefono_whatsapp,
+        email: nuevoCliente.email || undefined,
+        direccion: nuevoCliente.direccion || undefined,
+        tags: nuevoCliente.tags.length > 0 ? nuevoCliente.tags : ['Nuevo Cliente'],
+        ltv: 0,
+        frecuencia: 0,
+        fecha_alta: new Date().toISOString()
+      };
 
-    // Add to mock data (in a real app, this would be an API call)
-    mockClientes.push(newCliente);
+      await clienteService.create(newClienteData);
+      await loadClientes();
 
-    // Reset form and close modal
-    setNuevoCliente({
-      nombre: '',
-      telefono_whatsapp: '',
-      email: '',
-      direccion: '',
-      tags: []
-    });
-    setShowNuevoCliente(false);
+      setNuevoCliente({
+        nombre: '',
+        telefono_whatsapp: '',
+        email: '',
+        direccion: '',
+        tags: []
+      });
+      setShowNuevoCliente(false);
 
-    alert('Cliente creado exitosamente');
+      alert('Cliente creado exitosamente');
+    } catch (error) {
+      console.error('Error creating cliente:', error);
+      alert('Error al crear el cliente');
+    }
   };
 
-  // Get all unique tags
-  const allTags = Array.from(new Set(mockClientes.flatMap(cliente => cliente.tags)));
-  
-  const filteredClientes = mockClientes.filter(cliente => {
+  const allTags = Array.from(new Set(clientes.flatMap(cliente => cliente.tags)));
+
+  const filteredClientes = clientes.filter(cliente => {
     const matchesSearch = cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          cliente.telefono_whatsapp.includes(searchTerm) ||
                          cliente.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -129,7 +145,7 @@ export default function ClientesManager() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Clientes</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">{mockClientes.length}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">{clientes.length}</p>
             </div>
             <div className="p-3 rounded-full bg-blue-100">
               <User className="h-6 w-6 text-blue-600" />
@@ -142,7 +158,7 @@ export default function ClientesManager() {
             <div>
               <p className="text-sm font-medium text-gray-600">Clientes VIP</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                {mockClientes.filter(c => c.tags.includes('VIP')).length}
+                {clientes.filter(c => c.tags.includes('VIP')).length}
               </p>
             </div>
             <div className="p-3 rounded-full bg-purple-100">
@@ -156,7 +172,7 @@ export default function ClientesManager() {
             <div>
               <p className="text-sm font-medium text-gray-600">LTV Promedio</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                {formatCurrency(mockClientes.reduce((sum, c) => sum + c.ltv, 0) / mockClientes.length)}
+                {formatCurrency(clientes.length > 0 ? clientes.reduce((sum, c) => sum + c.ltv, 0) / clientes.length : 0)}
               </p>
             </div>
             <div className="p-3 rounded-full bg-green-100">
@@ -170,7 +186,7 @@ export default function ClientesManager() {
             <div>
               <p className="text-sm font-medium text-gray-600">Nuevos Este Mes</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                {mockClientes.filter(c => c.tags.includes('Nuevo Cliente')).length}
+                {clientes.filter(c => c.tags.includes('Nuevo Cliente')).length}
               </p>
             </div>
             <div className="p-3 rounded-full bg-amber-100">
@@ -225,6 +241,12 @@ export default function ClientesManager() {
       </div>
 
       {/* Clients Table/Cards */}
+      {isLoading ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-500 mt-4">Cargando clientes...</p>
+        </div>
+      ) : (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
@@ -407,8 +429,9 @@ export default function ClientesManager() {
           ))}
         </div>
       </div>
+      )}
 
-      {filteredClientes.length === 0 && (
+      {!isLoading && filteredClientes.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <User className="h-12 w-12 mx-auto" />

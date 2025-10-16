@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Eye, CreditCard as Edit, Trash2, MessageSquare, X, ShoppingCart } from 'lucide-react';
 import type { Pedido, Cliente, EstadoPedido } from '../../types/database';
 import NuevoPedidoModal from './NuevoPedidoModal';
-import { mockPedidos } from '../../data/mockData';
+import { pedidoService } from '../../services/pedidoService';
 
 interface PedidosPipelineProps {
   onAddNotification: (notification: any) => void;
@@ -17,10 +17,11 @@ const estadoColors: Record<EstadoPedido, string> = {
 };
 
 export default function PedidosPipeline({ onAddNotification }: PedidosPipelineProps) {
+  const [pedidos, setPedidos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState<EstadoPedido | 'Todos'>('Todos');
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
-  const [pedidos, setPedidos] = useState(mockPedidos);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pedidoToDelete, setPedidoToDelete] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -32,7 +33,29 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
   const [showEditOrder, setShowEditOrder] = useState(false);
   const [selectedPedidoForEdit, setSelectedPedidoForEdit] = useState<string | null>(null);
 
-  const filteredPedidos = mockPedidos.filter(pedido => {
+  const loadPedidos = async () => {
+    try {
+      setIsLoading(true);
+      const data = await pedidoService.getAll();
+      setPedidos(data);
+    } catch (error) {
+      console.error('Error loading pedidos:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudieron cargar los pedidos',
+        type: 'error',
+        read: false
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPedidos();
+  }, []);
+
+  const filteredPedidos = pedidos.filter(pedido => {
     const matchesSearch = pedido.cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          pedido.pedido_id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = selectedEstado === 'Todos' || pedido.estado === selectedEstado;
@@ -51,33 +74,38 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
     });
   };
 
-  const handleCreatePedido = (pedidoData: any) => {
-    // En producción, esto haría una llamada a la API
-    const newPedido: Pedido & { cliente: Cliente } = {
-      pedido_id: `${Date.now()}`,
-      cliente_id: pedidoData.cliente.cliente_id,
-      estado: 'Pendiente',
-      subtotal: pedidoData.subtotal,
-      impuestos: pedidoData.impuestos,
-      total: pedidoData.total,
-      empleado: pedidoData.empleado,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      cliente: pedidoData.cliente
-    };
+  const handleCreatePedido = async (pedidoData: any) => {
+    try {
+      const pedido = {
+        cliente_id: pedidoData.cliente.cliente_id,
+        estado: 'Pendiente' as const,
+        subtotal: pedidoData.subtotal,
+        impuestos: pedidoData.impuestos,
+        total: pedidoData.total,
+        empleado: pedidoData.empleado,
+        notas: pedidoData.notas
+      };
 
-    setPedidos([newPedido, ...pedidos]);
-    
-    // Agregar notificación
-    onAddNotification({
-      title: 'Nuevo Pedido',
-      message: `Nuevo pedido #${newPedido.pedido_id} de ${pedidoData.cliente.nombre} por ${formatCurrency(pedidoData.total)}`,
-      type: 'success',
-      read: false
-    });
-    
-    // Simular envío de WhatsApp
-    alert(`Pedido creado exitosamente!\n\nSe enviará confirmación por WhatsApp a ${pedidoData.cliente.telefono_whatsapp}\n\nTotal: $${pedidoData.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
+      await pedidoService.create(pedido, pedidoData.items);
+      await loadPedidos();
+
+      onAddNotification({
+        title: 'Nuevo Pedido',
+        message: `Nuevo pedido de ${pedidoData.cliente.nombre} por ${formatCurrency(pedidoData.total)}`,
+        type: 'success',
+        read: false
+      });
+
+      alert(`Pedido creado exitosamente!\n\nSe enviará confirmación por WhatsApp a ${pedidoData.cliente.telefono_whatsapp}\n\nTotal: $${pedidoData.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`);
+    } catch (error) {
+      console.error('Error creating pedido:', error);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se pudo crear el pedido',
+        type: 'error',
+        read: false
+      });
+    }
   };
 
   const handleDeleteClick = (pedidoId: string) => {
@@ -85,23 +113,31 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteConfirmText === 'ELIMINAR' && pedidoToDelete) {
-      // Remove pedido from list
-      setPedidos(pedidos.filter(p => p.pedido_id !== pedidoToDelete));
-      
-      // Add notification
-      onAddNotification({
-        title: 'Pedido Eliminado',
-        message: `El pedido #${pedidoToDelete} ha sido eliminado`,
-        type: 'warning',
-        read: false
-      });
-      
-      // Reset modal state
-      setShowDeleteModal(false);
-      setPedidoToDelete(null);
-      setDeleteConfirmText('');
+      try {
+        await pedidoService.delete(pedidoToDelete);
+        await loadPedidos();
+
+        onAddNotification({
+          title: 'Pedido Eliminado',
+          message: `El pedido #${pedidoToDelete} ha sido eliminado`,
+          type: 'warning',
+          read: false
+        });
+
+        setShowDeleteModal(false);
+        setPedidoToDelete(null);
+        setDeleteConfirmText('');
+      } catch (error) {
+        console.error('Error deleting pedido:', error);
+        onAddNotification({
+          title: 'Error',
+          message: 'No se pudo eliminar el pedido',
+          type: 'error',
+          read: false
+        });
+      }
     }
   };
 
@@ -130,43 +166,37 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
   };
 
   const handleAddNotes = (pedidoId: string) => {
-    const pedido = mockPedidos.find(p => p.pedido_id === pedidoId);
+    const pedido = pedidos.find(p => p.pedido_id === pedidoId);
     setSelectedPedidoForNotes(pedidoId);
     setNotesText(pedido?.notas || '');
     setShowNotesModal(true);
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     if (selectedPedidoForNotes) {
-      // Update the pedido with new notes
-      const updatedPedidos = pedidos.map(pedido => 
-        pedido.pedido_id === selectedPedidoForNotes 
-          ? { ...pedido, notas: notesText, updated_at: new Date().toISOString() }
-          : pedido
-      );
-      setPedidos(updatedPedidos);
-      
-      // Also update mockPedidos for consistency
-      const pedidoIndex = mockPedidos.findIndex(p => p.pedido_id === selectedPedidoForNotes);
-      if (pedidoIndex !== -1) {
-        mockPedidos[pedidoIndex] = { 
-          ...mockPedidos[pedidoIndex], 
-          notas: notesText,
-          updated_at: new Date().toISOString()
-        };
+      try {
+        await pedidoService.updateNotas(selectedPedidoForNotes, notesText);
+        await loadPedidos();
+
+        onAddNotification({
+          title: 'Notas Actualizadas',
+          message: `Se actualizaron las notas del pedido #${selectedPedidoForNotes}`,
+          type: 'success',
+          read: false
+        });
+
+        setShowNotesModal(false);
+        setSelectedPedidoForNotes(null);
+        setNotesText('');
+      } catch (error) {
+        console.error('Error updating notes:', error);
+        onAddNotification({
+          title: 'Error',
+          message: 'No se pudieron actualizar las notas',
+          type: 'error',
+          read: false
+        });
       }
-      
-      onAddNotification({
-        title: 'Notas Actualizadas',
-        message: `Se actualizaron las notas del pedido #${selectedPedidoForNotes}`,
-        type: 'success',
-        read: false
-      });
-      
-      // Reset modal state
-      setShowNotesModal(false);
-      setSelectedPedidoForNotes(null);
-      setNotesText('');
     }
   };
 
@@ -176,7 +206,7 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
     setNotesText('');
   };
 
-  const selectedPedido = selectedPedidoId ? mockPedidos.find(p => p.pedido_id === selectedPedidoId) : null;
+  const selectedPedido = selectedPedidoId ? pedidos.find(p => p.pedido_id === selectedPedidoId) : null;
   return (
     <div className="p-4 lg:p-6">
       {/* Header */}
@@ -228,6 +258,12 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
       </div>
 
       {/* Pipeline Cards */}
+      {isLoading ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-500 mt-4">Cargando pedidos...</p>
+        </div>
+      ) : (
       <div className="grid gap-4 md:gap-6">
         {filteredPedidos.map((pedido) => (
           <div key={pedido.pedido_id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
@@ -314,8 +350,9 @@ export default function PedidosPipeline({ onAddNotification }: PedidosPipelinePr
           </div>
         ))}
       </div>
+      )}
 
-      {filteredPedidos.length === 0 && (
+      {!isLoading && filteredPedidos.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <ShoppingCart className="h-12 w-12 mx-auto" />
