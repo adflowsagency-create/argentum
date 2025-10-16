@@ -88,20 +88,20 @@ export function useActiveLive() {
             estado: active.estado as 'programado' | 'activo' | 'finalizado'
           };
 
-        const dismissedLiveId = localStorage.getItem('dismissedLiveBanner');
+          const dismissedLiveId = localStorage.getItem('dismissedLiveBanner');
 
           if (dismissedLiveId !== active.live_id) {
             setActiveLive(liveWithStats);
-          setIsDismissed(false);
+            setIsDismissed(false);
+          } else {
+            setIsDismissed(true);
+          }
         } else {
-          setIsDismissed(true);
-        }
-      } else {
           // No active live found
-        setActiveLive(null);
-        setIsDismissed(false);
-        localStorage.removeItem('dismissedLiveBanner');
-      }
+          setActiveLive(null);
+          setIsDismissed(false);
+          localStorage.removeItem('dismissedLiveBanner');
+        }
       } catch (error) {
         console.error('Error in checkActiveLive:', error);
         setActiveLive(null);
@@ -125,3 +125,4 @@ export function useActiveLive() {
     dismissBanner,
     shouldShowBanner: activeLive && !isDismissed
   };
+}
