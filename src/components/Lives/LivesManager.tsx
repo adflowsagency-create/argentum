@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3, X } from 'lucide-react';
 import { Trash2, AlertTriangle, Clock } from 'lucide-react';
 import type { Live } from '../../types/database';
@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabaseClient';
 import LiveDetailsModal from './LiveDetailsModal';
 import EditLiveModal from './EditLiveModal';
 import ActiveLiveModal from './ActiveLiveModal';
+import { useActiveLive } from '../../hooks/useActiveLive';
 
 interface LivesManagerProps {
   onAddNotification: (notification: any) => void;
@@ -42,14 +43,25 @@ const getTimeUntilLive = (fechaHora: string): string => {
   }
 };
 
+type LiveWithStats = Live & {
+  ventas_total: number;
+  pedidos_count: number;
+  estado: 'programado' | 'activo' | 'finalizado';
+};
+
 export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [showCrearLive, setShowCrearLive] = useState(false);
   const [selectedLive, setSelectedLive] = useState<string | null>(null);
   const [showLiveDetails, setShowLiveDetails] = useState(false);
   const [showEditLive, setShowEditLive] = useState(false);
   const [showActiveLive, setShowActiveLive] = useState(false);
-  const [lives, setLives] = useState<(Live & { ventas_total: number; pedidos_count: number; estado: 'programado' | 'activo' | 'finalizado' })[]>([]);
+  const [lives, setLives] = useState<LiveWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dismissedActiveLiveId, setDismissedActiveLiveId] = useState<string | null>(null);
+  const [isWatchingActiveLive, setIsWatchingActiveLive] = useState(true);
+
+  const prevLivesRef = useRef<LiveWithStats[]>([]);
+  const { activeLive } = useActiveLive();
   
   // New live form state
   const [newLiveTitle, setNewLiveTitle] = useState('');
@@ -120,6 +132,75 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const prevLives = prevLivesRef.current;
+    const findNewlyActivatedLive = () =>
+      lives.find((live) => {
+        if (live.estado !== 'activo') return false;
+        const prevLive = prevLives.find((prev) => prev.live_id === live.live_id);
+        return !prevLive || prevLive.estado !== 'activo';
+      });
+
+    if (!isWatchingActiveLive) {
+      const newlyActive = findNewlyActivatedLive();
+      if (newlyActive && newlyActive.live_id !== dismissedActiveLiveId) {
+        setIsWatchingActiveLive(true);
+      }
+      prevLivesRef.current = lives;
+      return;
+    }
+
+    const newlyActive = findNewlyActivatedLive();
+
+    if (newlyActive) {
+      const matchesSelection = !selectedLive || selectedLive === newlyActive.live_id;
+      const notDismissed = dismissedActiveLiveId !== newlyActive.live_id;
+
+      if (matchesSelection && notDismissed) {
+        setSelectedLive(newlyActive.live_id);
+        setShowActiveLive(true);
+      }
+    }
+
+    prevLivesRef.current = lives;
+  }, [lives, selectedLive, dismissedActiveLiveId, isWatchingActiveLive]);
+
+  useEffect(() => {
+    if (!activeLive) {
+      if (dismissedActiveLiveId) {
+        const stillActive = lives.some(
+          (live) => live.live_id === dismissedActiveLiveId && live.estado === 'activo'
+        );
+
+        if (!stillActive) {
+          setDismissedActiveLiveId(null);
+        }
+      }
+
+      if (!isWatchingActiveLive) {
+        setIsWatchingActiveLive(true);
+      }
+
+      return;
+    }
+
+    if (!isWatchingActiveLive) {
+      if (activeLive.live_id !== dismissedActiveLiveId) {
+        setIsWatchingActiveLive(true);
+      }
+      return;
+    }
+
+    if (dismissedActiveLiveId === activeLive.live_id) {
+      return;
+    }
+
+    if (!selectedLive || selectedLive === activeLive.live_id) {
+      setSelectedLive(activeLive.live_id);
+      setShowActiveLive(true);
+    }
+  }, [activeLive, dismissedActiveLiveId, isWatchingActiveLive, lives, selectedLive]);
+
   const formatCurrency = (amount: number) => `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
   
   const formatDateTime = (dateString: string) => {
@@ -165,7 +246,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
 
   const handleLiveClick = (live: any) => {
     setSelectedLive(live.live_id);
-    
+
     switch (live.estado) {
       case 'finalizado':
         setShowLiveDetails(true);
@@ -179,6 +260,15 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       default:
         break;
     }
+  };
+
+  const handleCloseActiveLiveModal = () => {
+    if (selectedLive) {
+      setDismissedActiveLiveId(selectedLive);
+    }
+    setIsWatchingActiveLive(false);
+    setShowActiveLive(false);
+    loadLives();
   };
 
   const handleCreateLive = async () => {
@@ -690,10 +780,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       {/* Active Live Modal */}
       <ActiveLiveModal
         isOpen={showActiveLive}
-        onClose={() => {
-          setShowActiveLive(false);
-          loadLives();
-        }}
+        onClose={handleCloseActiveLiveModal}
         liveId={selectedLive}
         onAddNotification={onAddNotification}
       />
