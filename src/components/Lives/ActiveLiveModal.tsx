@@ -477,67 +477,6 @@ export default function ActiveLiveModal({
     basket.cliente.nombre.toLowerCase().includes(basketSearch.toLowerCase())
   );
 
-  const suggestedProducts = useMemo(() => {
-    const salesMap = new Map<
-      string,
-      { product: Product; quantity: number; lastAdded: number }
-    >();
-
-    baskets.forEach((basket) => {
-      basket.items.forEach((item) => {
-        const productFromInventory = products.find(
-          (inventoryProduct) => inventoryProduct.product_id === item.product_id
-        );
-        const product = productFromInventory ?? item.product;
-        if (!product) return;
-        const available = productFromInventory?.stockDisponible ?? product.cantidad_en_stock;
-        if (available < 1) return;
-
-        const existingEntry = salesMap.get(product.product_id);
-        const itemCreatedAt = item.created_at
-          ? new Date(item.created_at).getTime()
-          : 0;
-
-        if (existingEntry) {
-          existingEntry.quantity += item.cantidad;
-          existingEntry.lastAdded = Math.max(existingEntry.lastAdded, itemCreatedAt);
-        } else {
-          salesMap.set(product.product_id, {
-            product,
-            quantity: item.cantidad,
-            lastAdded: itemCreatedAt,
-          });
-        }
-      });
-    });
-
-    const topSelling = Array.from(salesMap.values())
-      .sort((a, b) => {
-        if (b.quantity === a.quantity) {
-          return b.lastAdded - a.lastAdded;
-        }
-        return b.quantity - a.quantity;
-      })
-      .map((entry) => entry.product);
-
-    const recentProducts = [...products]
-      .filter((product) => (product.stockDisponible ?? product.cantidad_en_stock) > 0)
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-    const combined: Product[] = [];
-    [...topSelling, ...recentProducts].forEach((product) => {
-      if (!product) return;
-      if (!combined.some((p) => p.product_id === product.product_id)) {
-        combined.push(product);
-      }
-    });
-
-    return combined.slice(0, 5);
-  }, [baskets, products]);
-
   const selectedBasket = baskets.find((b) => b.basket_id === selectedBasketId);
 
   if (!isOpen || !live) return null;
@@ -635,10 +574,6 @@ export default function ActiveLiveModal({
                         setSelectedBasketId(basketId);
                         setShowBasketDrawer(true);
                       }}
-                      suggestedProducts={suggestedProducts}
-                      onQuickAdd={(basketId, productId) =>
-                        handleAddProduct(basketId, productId)
-                      }
                       isHighlighted={basket.basket_id === highlightedBasketId}
                     />
                   ))}

@@ -1,20 +1,16 @@
 import React from 'react';
 import { ShoppingBag, Phone, Package } from 'lucide-react';
-import type { BasketWithDetails, Product } from '../../types/database';
+import type { BasketWithDetails } from '../../types/database';
 
 interface BasketCardProps {
   basket: BasketWithDetails;
   onOpenBasket: (basketId: string) => void;
-  onQuickAdd: (basketId: string, productId: string) => void;
-  suggestedProducts?: Product[];
   isHighlighted?: boolean;
 }
 
 export default function BasketCard({
   basket,
   onOpenBasket,
-  onQuickAdd,
-  suggestedProducts,
   isHighlighted,
 }: BasketCardProps) {
   const formatCurrency = (amount: number) =>
@@ -24,7 +20,8 @@ export default function BasketCard({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border-2 p-4 transition-all duration-300 hover:shadow-md ${
+      onClick={() => onOpenBasket(basket.basket_id)}
+      className={`bg-white rounded-lg shadow-sm border-2 p-4 transition-all duration-300 hover:shadow-md cursor-pointer ${
         isHighlighted
           ? 'border-green-500 ring-4 ring-green-200 animate-pulse'
           : 'border-gray-200 hover:border-green-300'
@@ -43,25 +40,6 @@ export default function BasketCard({
         </div>
       </div>
 
-      {suggestedProducts && suggestedProducts.length > 0 && (
-        <div className="mt-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">Agregar rápido</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestedProducts.slice(0, 5).map((product) => (
-              <button
-                key={product.product_id}
-                type="button"
-                onClick={() => onQuickAdd(basket.basket_id, product.product_id)}
-                className="px-3 py-1 text-xs font-medium rounded-full border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                title={`Agregar ${product.nombre}`}
-              >
-                {product.nombre}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <div className="flex items-center text-sm text-gray-600">
           <Package className="h-4 w-4 mr-1" />
@@ -73,7 +51,10 @@ export default function BasketCard({
           </div>
           <button
             type="button"
-            onClick={() => onOpenBasket(basket.basket_id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenBasket(basket.basket_id);
+            }}
             className="px-3 py-1 text-sm font-medium text-green-700 bg-white border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
           >
             Ver / editar
