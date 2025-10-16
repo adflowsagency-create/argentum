@@ -89,10 +89,10 @@ export default function Sidebar({ activeModule, onModuleChange, isOpen, onToggle
         <div className="absolute bottom-4 left-4 right-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-xs text-gray-500 text-center">
-              Argentum OS v1.0
+              v1.0
             </p>
             <p className="text-xs text-gray-400 text-center mt-1">
-              Marca Blanca MVP
+              Plataforma de gestión
             </p>
           </div>
         </div>
