@@ -21,6 +21,7 @@ export interface Cliente {
   tags: string[];
   estado_ultimo_pedido?: EstadoClientePedido;
   fecha_alta: string;
+  fecha_alta: string;
   ltv: number;
   frecuencia: number;
   created_at: string;
