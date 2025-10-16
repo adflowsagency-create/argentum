@@ -234,7 +234,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   };
 
   const handleDeleteConfirm = async () => {
-    if (deleteConfirmText !== 'ELIMINAR' || !liveToDelete) return;
+    if (deleteConfirmText.trim() !== 'ELIMINAR' || !liveToDelete) return;
 
     try {
       const liveToDeleteData = lives.find(l => l.live_id === liveToDelete);
