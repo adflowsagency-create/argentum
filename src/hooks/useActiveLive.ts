@@ -1,6 +1,21 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+// Helper function to check if a live should be automatically activated
+const shouldAutoActivateLive = (fechaHora: string): boolean => {
+  const liveTime = new Date(fechaHora);
+  const now = new Date();
+  return now >= liveTime;
+};
+
+// Helper function to check if manual start should be available (15 minutes before)
+const canManuallyStart = (fechaHora: string): boolean => {
+  const liveTime = new Date(fechaHora);
+  const now = new Date();
+  const fifteenMinutesBefore = new Date(liveTime.getTime() - 15 * 60 * 1000);
+  return now >= fifteenMinutesBefore && now < liveTime;
+};
+
 export function useActiveLive() {
   const [activeLive, setActiveLive] = useState<typeof mockLives[0] | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -8,6 +23,33 @@ export function useActiveLive() {
   useEffect(() => {
     const checkActiveLive = async () => {
       try {
+        // First, check for scheduled lives that should be auto-activated
+        const { data: scheduledLives, error: scheduledError } = await supabase
+          .from('lives')
+          .select('*')
+          .eq('estado', 'programado')
+          .order('fecha_hora', { ascending: true });
+
+        if (scheduledError) {
+          console.error('Error fetching scheduled lives:', scheduledError);
+        } else if (scheduledLives) {
+          // Auto-activate lives that have reached their scheduled time
+          for (const live of scheduledLives) {
+            if (shouldAutoActivateLive(live.fecha_hora)) {
+              console.log(`Auto-activating live: ${live.titulo}`);
+              
+              const { error: updateError } = await supabase
+                .from('lives')
+                .update({ estado: 'activo' })
+                .eq('live_id', live.live_id);
+
+              if (updateError) {
+                console.error('Error auto-activating live:', updateError);
+              }
+            }
+          }
+        }
+
         // Get lives that are currently active
         const { data: activeLives, error } = await supabase
           .from('lives')
@@ -67,7 +109,7 @@ export function useActiveLive() {
     };
 
     checkActiveLive();
-    const interval = setInterval(checkActiveLive, 10000); // Check every 10 seconds
+    const interval = setInterval(checkActiveLive, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -83,4 +125,3 @@ export function useActiveLive() {
     dismissBanner,
     shouldShowBanner: activeLive && !isDismissed
   };
-}
