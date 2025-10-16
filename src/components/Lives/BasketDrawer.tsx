@@ -47,28 +47,29 @@ export default function BasketDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+        className="fixed inset-0 bg-black bg-opacity-50 z-[70] transition-opacity"
         onClick={onClose}
       />
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+      <div className="fixed right-0 top-0 h-full w-full sm:max-w-lg bg-white shadow-2xl z-[80] transform transition-transform duration-300 ease-in-out overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 z-10">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex-1 min-w-0 mr-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
                 Canasta de {basket.cliente.nombre}
               </h2>
-              <p className="text-sm text-gray-500">{basket.cliente.telefono_whatsapp}</p>
+              <p className="text-xs sm:text-sm text-gray-500">{basket.cliente.telefono_whatsapp}</p>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
               <ShoppingCart className="h-5 w-5 mr-2" />
@@ -113,7 +114,12 @@ export default function BasketDrawer({
                           </p>
                         </div>
                         <button
-                          onClick={() => onRemoveItem(item.basket_item_id)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRemoveItem(item.basket_item_id);
+                          }}
                           className="p-1 text-red-400 hover:text-red-600 transition-colors"
                           title="Eliminar producto"
                         >
@@ -124,20 +130,26 @@ export default function BasketDrawer({
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() =>
-                              onUpdateQuantity(item.basket_item_id, item.cantidad - 1)
-                            }
-                            className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onUpdateQuantity(item.basket_item_id, item.cantidad - 1);
+                            }}
+                            className="p-2 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={item.cantidad <= 1}
                           >
                             <Minus className="h-4 w-4" />
                           </button>
                           <span className="w-12 text-center font-medium">{item.cantidad}</span>
                           <button
-                            onClick={() =>
-                              onUpdateQuantity(item.basket_item_id, item.cantidad + 1)
-                            }
-                            className="p-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors"
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onUpdateQuantity(item.basket_item_id, item.cantidad + 1);
+                            }}
+                            className="p-2 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={item.cantidad >= maxQuantity}
                           >
                             <Plus className="h-4 w-4" />
@@ -200,7 +212,12 @@ export default function BasketDrawer({
                         </div>
                       </div>
                       <button
-                        onClick={() => handleAddProduct(product.product_id)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAddProduct(product.product_id);
+                        }}
                         className="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Plus className="h-4 w-4" />
