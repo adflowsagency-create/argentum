@@ -234,7 +234,10 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   };
 
   const handleDeleteConfirm = async () => {
-    if (deleteConfirmText.trim() !== 'ELIMINAR' || !liveToDelete) return;
+    if (deleteConfirmText !== 'ELIMINAR' || !liveToDelete) {
+      console.log('Delete confirmation failed:', { deleteConfirmText, liveToDelete });
+      return;
+    }
 
     try {
       const liveToDeleteData = lives.find(l => l.live_id === liveToDelete);
@@ -265,7 +268,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       onAddNotification({
         title: 'Live Eliminado',
         message: `El live "${liveToDeleteData?.titulo || 'seleccionado'}" ha sido eliminado`,
-        type: 'success',
+        type: 'warning',
         read: false
       });
 
@@ -679,7 +682,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                disabled={deleteConfirmText !== 'ELIMINAR'}
+                disabled={deleteConfirmText.trim() !== 'ELIMINAR'}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
