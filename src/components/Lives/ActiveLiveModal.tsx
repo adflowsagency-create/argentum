@@ -485,36 +485,43 @@ export default function ActiveLiveModal({
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
         <div className="bg-white w-full h-full flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-green-50">
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base sm:text-xl font-semibold text-gray-900 truncate">
                   EN VIVO: {live.titulo || `Live #${live.live_id}`}
                 </h2>
-                <p className="text-sm text-gray-600">Gestión de ventas en tiempo real</p>
+                <p className="hidden sm:block text-sm text-gray-600">Gestión de ventas en tiempo real</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 sm:space-x-3 ml-2 flex-shrink-0">
               <button
                 onClick={() =>
                   setIsProductSidebarOpen((prev) => (isDesktopLayout ? prev : !prev))
                 }
-                className="sm:hidden px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                className="sm:hidden p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                title={isProductSidebarOpen ? 'Ocultar catálogo' : 'Ver catálogo'}
               >
                 {isProductSidebarOpen ? (
                   <PanelRightClose className="h-4 w-4" />
                 ) : (
                   <PanelRightOpen className="h-4 w-4" />
                 )}
-                <span>{isProductSidebarOpen ? 'Ocultar catálogo' : 'Ver catálogo'}</span>
               </button>
               <button
                 onClick={() => setShowFinalizeModal(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                className="hidden sm:flex px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors items-center space-x-2"
               >
                 <Power className="h-4 w-4" />
                 <span>Finalizar Live</span>
+              </button>
+              <button
+                onClick={() => setShowFinalizeModal(true)}
+                className="sm:hidden p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                title="Finalizar Live"
+              >
+                <Power className="h-4 w-4" />
               </button>
               <button
                 onClick={onClose}
@@ -526,27 +533,36 @@ export default function ActiveLiveModal({
           </div>
 
           <div className="flex flex-1 overflow-hidden flex-col sm:flex-row">
-            <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+            <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto">
               <LiveStatsPanel stats={stats} />
 
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Canastas Activas ({baskets.length})
-                </h3>
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
+              <div className="flex flex-col gap-3 mb-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                    Canastas Activas ({baskets.length})
+                  </h3>
+                  <button
+                    onClick={() => setShowClienteSelector(true)}
+                    className="sm:hidden p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    title="Abrir Canasta"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
                       placeholder="Buscar canasta..."
                       value={basketSearch}
                       onChange={(e) => setBasketSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
                     />
                   </div>
                   <button
                     onClick={() => setShowClienteSelector(true)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    className="hidden sm:flex px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors items-center space-x-2 whitespace-nowrap"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Abrir Canasta</span>

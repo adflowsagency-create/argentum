@@ -130,67 +130,68 @@ export default function ClientesManager() {
           <p className="text-gray-600 mt-1">Gestiona tu base de clientes y su historial</p>
         </div>
         
-        <button 
+        <button
           onClick={() => setShowNuevoCliente(true)}
-          className="mt-4 lg:mt-0 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center"
+          className="mt-4 lg:mt-0 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center text-sm sm:text-base"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Cliente
+          <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Nuevo Cliente</span>
+          <span className="sm:hidden">Nuevo</span>
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Clientes</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">{clientes.length}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Clientes</p>
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{clientes.length}</p>
             </div>
-            <div className="p-3 rounded-full bg-blue-100">
-              <User className="h-6 w-6 text-blue-600" />
+            <div className="p-2 sm:p-3 rounded-full bg-blue-100 flex-shrink-0 ml-2">
+              <User className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Clientes VIP</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Clientes VIP</p>
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">
                 {clientes.filter(c => c.tags.includes('VIP')).length}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-purple-100">
-              <Tag className="h-6 w-6 text-purple-600" />
+            <div className="p-2 sm:p-3 rounded-full bg-purple-100 flex-shrink-0 ml-2">
+              <Tag className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-purple-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">LTV Promedio</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">LTV Promedio</p>
+              <p className="text-sm sm:text-lg md:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">
                 {formatCurrency(clientes.length > 0 ? clientes.reduce((sum, c) => sum + c.ltv, 0) / clientes.length : 0)}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-green-100">
-              <Tag className="h-6 w-6 text-green-600" />
+            <div className="p-2 sm:p-3 rounded-full bg-green-100 flex-shrink-0 ml-2">
+              <Tag className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Nuevos Este Mes</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Nuevos Este Mes</p>
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">
                 {clientes.filter(c => c.tags.includes('Nuevo Cliente')).length}
               </p>
             </div>
-            <div className="p-3 rounded-full bg-amber-100">
-              <Plus className="h-6 w-6 text-amber-600" />
+            <div className="p-2 sm:p-3 rounded-full bg-amber-100 flex-shrink-0 ml-2">
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-amber-600" />
             </div>
           </div>
         </div>

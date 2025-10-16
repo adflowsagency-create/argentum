@@ -127,20 +127,22 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
           <p className="text-gray-600 mt-1">Gestiona tus productos y stock</p>
         </div>
         
-        <div className="mt-4 lg:mt-0 flex space-x-2">
-          <button 
+        <div className="mt-4 lg:mt-0 flex flex-wrap gap-2">
+          <button
             onClick={() => setShowReabastecer(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors duration-200 flex items-center"
+            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors duration-200 flex items-center text-sm sm:text-base"
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Reabastecer
+            <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Reabastecer</span>
+            <span className="sm:hidden">Abastecer</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowNuevoProducto(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center"
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center text-sm sm:text-base"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Producto
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo Producto</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
         </div>
       </div>
@@ -183,9 +185,9 @@ export default function InventarioTable({ onAddNotification }: InventarioTablePr
               <span className="text-sm text-gray-700">Solo stock bajo</span>
             </label>
             
-            <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+            <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-1 sm:space-x-2">
               <Download className="h-4 w-4" />
-              <span className="text-sm">Exportar</span>
+              <span className="text-xs sm:text-sm">Exportar</span>
             </button>
           </div>
         </div>
