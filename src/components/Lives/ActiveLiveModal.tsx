@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Search, Plus, Power } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Search, Plus, Power, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Live, BasketWithDetails, Product, Cliente, LiveStats } from '../../types/database';
 import LiveStatsPanel from './LiveStatsPanel';
@@ -42,6 +42,23 @@ export default function ActiveLiveModal({
   const [isProcessingFinalization, setIsProcessingFinalization] = useState(false);
 
   const [basketSearch, setBasketSearch] = useState('');
+  const [isProductSidebarOpen, setIsProductSidebarOpen] = useState(false);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(false);
+
+  useEffect(() => {
+    const handleLayoutChange = () => {
+      if (typeof window === 'undefined') return;
+
+      const isDesktop = window.innerWidth >= 640;
+      setIsDesktopLayout(isDesktop);
+      setIsProductSidebarOpen(isDesktop);
+    };
+
+    handleLayoutChange();
+    window.addEventListener('resize', handleLayoutChange);
+
+    return () => window.removeEventListener('resize', handleLayoutChange);
+  }, []);
 
   const loadLiveData = useCallback(async () => {
     if (!liveId) return;
@@ -62,8 +79,10 @@ export default function ActiveLiveModal({
       .eq('live_id', liveId)
       .eq('estado', 'abierta');
 
+    let basketsWithDetails: BasketWithDetails[] = [];
+
     if (basketsData) {
-      const basketsWithDetails: BasketWithDetails[] = [];
+      const loadedBaskets: BasketWithDetails[] = [];
 
       for (const basket of basketsData) {
         const { data: cliente } = await supabase
@@ -93,7 +112,7 @@ export default function ActiveLiveModal({
         }
 
         if (cliente) {
-          basketsWithDetails.push({
+          loadedBaskets.push({
             ...basket,
             cliente,
             items: itemsWithProducts,
@@ -101,6 +120,7 @@ export default function ActiveLiveModal({
         }
       }
 
+      basketsWithDetails = loadedBaskets;
       setBaskets(basketsWithDetails);
 
       const totalRevenue = basketsWithDetails.reduce((sum, b) => sum + b.total, 0);
@@ -118,7 +138,23 @@ export default function ActiveLiveModal({
 
     const { data: productsData } = await supabase.from('products').select('*').eq('activo', true);
     if (productsData) {
-      setProducts(productsData);
+      const reservedQuantities = basketsWithDetails.reduce<Record<string, number>>((acc, basket) => {
+        for (const item of basket.items) {
+          acc[item.product_id] = (acc[item.product_id] || 0) + item.cantidad;
+        }
+        return acc;
+      }, {});
+
+      const productsWithAvailability = productsData.map((product) => {
+        const reserved = reservedQuantities[product.product_id] || 0;
+        const available = Math.max(product.cantidad_en_stock - reserved, 0);
+        return {
+          ...product,
+          stockDisponible: available,
+        };
+      });
+
+      setProducts(productsWithAvailability);
     }
 
     const { data: clientesData } = await supabase.from('clientes').select('*');
@@ -188,7 +224,8 @@ export default function ActiveLiveModal({
 
   const handleAddProduct = async (basketId: string, productId: string) => {
     const product = products.find((p) => p.product_id === productId);
-    if (!product || product.cantidad_en_stock < 1) {
+    const availableStock = product ? product.stockDisponible ?? product.cantidad_en_stock : 0;
+    if (!product || availableStock < 1) {
       onAddNotification({
         title: 'Stock Insuficiente',
         message: 'No hay stock disponible para este producto',
@@ -245,10 +282,16 @@ export default function ActiveLiveModal({
     if (!item) return;
 
     const product = products.find((p) => p.product_id === item.product_id);
-    if (!product || newQuantity > product.cantidad_en_stock) {
+    if (!product) {
+      return;
+    }
+
+    const productAvailableStock = (product.stockDisponible ?? product.cantidad_en_stock) + item.cantidad;
+
+    if (newQuantity > productAvailableStock) {
       onAddNotification({
         title: 'Stock Insuficiente',
-        message: `Solo hay ${product?.cantidad_en_stock || 0} unidades disponibles`,
+        message: `Solo hay ${productAvailableStock} unidades disponibles`,
         type: 'warning',
         read: false,
       });
@@ -503,6 +546,19 @@ export default function ActiveLiveModal({
             </div>
             <div className="flex items-center space-x-3">
               <button
+                onClick={() =>
+                  setIsProductSidebarOpen((prev) => (isDesktopLayout ? prev : !prev))
+                }
+                className="sm:hidden px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                {isProductSidebarOpen ? (
+                  <PanelRightClose className="h-4 w-4" />
+                ) : (
+                  <PanelRightOpen className="h-4 w-4" />
+                )}
+                <span>{isProductSidebarOpen ? 'Ocultar catálogo' : 'Ver catálogo'}</span>
+              </button>
+              <button
                 onClick={() => setShowFinalizeModal(true)}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
               >
@@ -518,7 +574,7 @@ export default function ActiveLiveModal({
             </div>
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden flex-col sm:flex-row">
             <div className="flex-1 flex flex-col p-6 overflow-y-auto">
               <LiveStatsPanel stats={stats} />
 
@@ -558,7 +614,7 @@ export default function ActiveLiveModal({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredBaskets.map((basket) => (
                     <BasketCard
                       key={basket.basket_id}
@@ -578,7 +634,20 @@ export default function ActiveLiveModal({
               )}
             </div>
 
-            <ProductSidebar products={products} onAddNewProduct={handleAddNewProduct} />
+            {!isDesktopLayout && (
+              <div
+                className={`fixed inset-0 bg-black/40 transition-opacity duration-300 ${
+                  isProductSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                } sm:hidden z-40`}
+                onClick={() => setIsProductSidebarOpen(false)}
+              />
+            )}
+            <ProductSidebar
+              products={products}
+              onAddNewProduct={handleAddNewProduct}
+              isOpen={isDesktopLayout || isProductSidebarOpen}
+              onClose={() => setIsProductSidebarOpen(false)}
+            />
           </div>
         </div>
       </div>
