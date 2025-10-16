@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import type { Live } from '../types/database';
 
 // Helper function to check if a live should be automatically activated
 const shouldAutoActivateLive = (fechaHora: string): boolean => {
@@ -16,8 +17,14 @@ const canManuallyStart = (fechaHora: string): boolean => {
   return now >= fifteenMinutesBefore && now < liveTime;
 };
 
+type LiveWithStats = Live & {
+  ventas_total: number;
+  pedidos_count: number;
+  estado: 'programado' | 'activo' | 'finalizado';
+};
+
 export function useActiveLive() {
-  const [activeLive, setActiveLive] = useState<typeof mockLives[0] | null>(null);
+  const [activeLive, setActiveLive] = useState<LiveWithStats | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {

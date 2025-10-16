@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Video, Plus, Calendar, DollarSign, Users, TrendingUp, Play, Pause, BarChart3, X } from 'lucide-react';
 import { Trash2, AlertTriangle, Clock } from 'lucide-react';
 import type { Live } from '../../types/database';
@@ -74,7 +74,7 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
   const [liveToDelete, setLiveToDelete] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  const loadLives = async () => {
+  const loadLives = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -124,13 +124,13 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onAddNotification]);
 
   useEffect(() => {
     loadLives();
     const interval = setInterval(loadLives, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadLives]);
 
   useEffect(() => {
     const prevLives = prevLivesRef.current;
@@ -164,6 +164,16 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
 
     prevLivesRef.current = lives;
   }, [lives, selectedLive, dismissedActiveLiveId, isWatchingActiveLive]);
+
+  const lastActiveLiveIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentActiveLiveId = activeLive?.live_id ?? null;
+    if (currentActiveLiveId !== lastActiveLiveIdRef.current) {
+      lastActiveLiveIdRef.current = currentActiveLiveId;
+      loadLives();
+    }
+  }, [activeLive, loadLives]);
 
   useEffect(() => {
     if (!activeLive) {
@@ -371,10 +381,57 @@ export default function LivesManager({ onAddNotification }: LivesManagerProps) {
       }
 
       // Eliminar de Supabase
-      const { error } = await supabase
-        .from('lives')
-        .delete()
+      const { data: liveBaskets, error: basketsError } = await supabase
+        .from('baskets')
+        .select('basket_id')
         .eq('live_id', liveToDelete);
+
+      if (basketsError) throw basketsError;
+
+      const basketIds = (liveBaskets || []).map((basket) => basket.basket_id);
+
+      if (basketIds.length > 0) {
+        const { error: basketItemsError } = await supabase
+          .from('basket_items')
+          .delete()
+          .in('basket_id', basketIds);
+
+        if (basketItemsError) throw basketItemsError;
+
+        const { error: deleteBasketsError } = await supabase
+          .from('baskets')
+          .delete()
+          .in('basket_id', basketIds);
+
+        if (deleteBasketsError) throw deleteBasketsError;
+      }
+
+      const { data: pedidos, error: pedidosError } = await supabase
+        .from('pedidos')
+        .select('pedido_id')
+        .eq('live_id', liveToDelete);
+
+      if (pedidosError) throw pedidosError;
+
+      const pedidoIds = (pedidos || []).map((pedido) => pedido.pedido_id);
+
+      if (pedidoIds.length > 0) {
+        const { error: pedidoItemsError } = await supabase
+          .from('pedido_items')
+          .delete()
+          .in('pedido_id', pedidoIds);
+
+        if (pedidoItemsError) throw pedidoItemsError;
+
+        const { error: deletePedidosError } = await supabase
+          .from('pedidos')
+          .delete()
+          .in('pedido_id', pedidoIds);
+
+        if (deletePedidosError) throw deletePedidosError;
+      }
+
+      const { error } = await supabase.from('lives').delete().eq('live_id', liveToDelete);
 
       if (error) throw error;
 
