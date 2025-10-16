@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Settings, Bell, Users, Shield, MessageSquare, Tag, Save, Plus, CreditCard as Edit, Trash2 } from 'lucide-react';
+import { Settings, Bell, Users, Shield, MessageSquare, Tag, Save, Plus, CreditCard as Edit, Trash2, Database } from 'lucide-react';
 import { mockUsers } from '../../data/mockData';
+import DatabaseSeeder from './DatabaseSeeder';
 
 export default function ConfiguracionManager() {
-  const [activeTab, setActiveTab] = useState('notificaciones');
+  const [activeTab, setActiveTab] = useState('datos');
   const [showNewUser, setShowNewUser] = useState(false);
 
   const tabs = [
+    { id: 'datos', label: 'Datos', icon: Database },
     { id: 'notificaciones', label: 'Notificaciones', icon: Bell },
     { id: 'usuarios', label: 'Usuarios', icon: Users },
     { id: 'permisos', label: 'Permisos', icon: Shield },
@@ -403,6 +405,9 @@ export default function ConfiguracionManager() {
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'datos' ? (
+        <DatabaseSeeder />
+      ) : (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {activeTab === 'notificaciones' && renderNotificaciones()}
         {activeTab === 'usuarios' && renderUsuarios()}
@@ -410,6 +415,7 @@ export default function ConfiguracionManager() {
         {activeTab === 'whatsapp' && renderWhatsApp()}
         {activeTab === 'categorias' && renderCategorias()}
       </div>
+      )}
     </div>
   );
 }
