@@ -261,7 +261,8 @@ export async function seedDatabase() {
             product_id: products[0].product_id,
             cantidad: 1,
             precio_unitario_snapshot: 450.00,
-            costo_unitario_snapshot: 180.00
+            costo_unitario_snapshot: 180.00,
+            total_item: 450.00
           }
         ]
       },
@@ -278,7 +279,8 @@ export async function seedDatabase() {
             product_id: products[1].product_id,
             cantidad: 2,
             precio_unitario_snapshot: 320.00,
-            costo_unitario_snapshot: 128.00
+            costo_unitario_snapshot: 128.00,
+            total_item: 640.00
           }
         ]
       },
@@ -294,7 +296,8 @@ export async function seedDatabase() {
             product_id: products[2].product_id,
             cantidad: 2,
             precio_unitario_snapshot: 680.00,
-            costo_unitario_snapshot: 272.00
+            costo_unitario_snapshot: 272.00,
+            total_item: 1360.00
           }
         ]
       },
@@ -311,7 +314,8 @@ export async function seedDatabase() {
             product_id: products[4].product_id,
             cantidad: 1,
             precio_unitario_snapshot: 1200.00,
-            costo_unitario_snapshot: 480.00
+            costo_unitario_snapshot: 480.00,
+            total_item: 1200.00
           }
         ]
       },
@@ -327,7 +331,8 @@ export async function seedDatabase() {
             product_id: products[5].product_id,
             cantidad: 2,
             precio_unitario_snapshot: 380.00,
-            costo_unitario_snapshot: 152.00
+            costo_unitario_snapshot: 152.00,
+            total_item: 760.00
           }
         ]
       },
@@ -343,13 +348,15 @@ export async function seedDatabase() {
             product_id: products[1].product_id,
             cantidad: 1,
             precio_unitario_snapshot: 320.00,
-            costo_unitario_snapshot: 128.00
+            costo_unitario_snapshot: 128.00,
+            total_item: 320.00
           },
           {
             product_id: products[6].product_id,
             cantidad: 1,
             precio_unitario_snapshot: 520.00,
-            costo_unitario_snapshot: 208.00
+            costo_unitario_snapshot: 208.00,
+            total_item: 520.00
           }
         ]
       }
