@@ -544,7 +544,7 @@ export default function ActiveLiveModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
         <div className="bg-white w-full h-full flex flex-col overflow-hidden">
           <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
             <div className="flex items-center space-x-3">
@@ -665,7 +665,7 @@ export default function ActiveLiveModal({
       </div>
 
       {showClienteSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar Cliente</h3>
 

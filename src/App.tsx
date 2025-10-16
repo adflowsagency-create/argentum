@@ -60,8 +60,8 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Live Announcement Banner */}
-      {shouldShowBanner && activeLive && (
+      {/* Live Announcement Banner - Hidden when in Lives module */}
+      {shouldShowBanner && activeLive && activeModule !== 'lives' && (
         <LiveAnnouncementBanner
           liveId={activeLive.live_id}
           titulo={activeLive.titulo || `Live #${activeLive.live_id}`}
