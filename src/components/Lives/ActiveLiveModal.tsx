@@ -171,6 +171,13 @@ export default function ActiveLiveModal({
     }
   }, [isOpen, liveId, loadLiveData]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (live && live.estado !== 'activo') {
+      onClose();
+    }
+  }, [isOpen, live, onClose]);
+
   const handleOpenBasket = async (clienteId: string) => {
     if (!liveId) return;
 
@@ -478,8 +485,13 @@ export default function ActiveLiveModal({
 
     baskets.forEach((basket) => {
       basket.items.forEach((item) => {
-        const { product } = item;
-        if (!product || product.cantidad_en_stock < 1) return;
+        const productFromInventory = products.find(
+          (inventoryProduct) => inventoryProduct.product_id === item.product_id
+        );
+        const product = productFromInventory ?? item.product;
+        if (!product) return;
+        const available = productFromInventory?.stockDisponible ?? product.cantidad_en_stock;
+        if (available < 1) return;
 
         const existingEntry = salesMap.get(product.product_id);
         const itemCreatedAt = item.created_at
@@ -509,7 +521,7 @@ export default function ActiveLiveModal({
       .map((entry) => entry.product);
 
     const recentProducts = [...products]
-      .filter((product) => product.cantidad_en_stock > 0)
+      .filter((product) => (product.stockDisponible ?? product.cantidad_en_stock) > 0)
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
