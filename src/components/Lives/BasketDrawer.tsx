@@ -203,75 +203,60 @@ export default function BasketDrawer({
                   return (
                     <div
                       key={item.basket_item_id}
-                      className="bg-gray-50 rounded-lg p-3 border border-gray-200"
+                      className="bg-white rounded-lg p-3 border-2 border-gray-200 hover:border-gray-300 transition-colors"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2 flex-1 min-w-0">
-                          {item.product.imagen_url && (
-                            <img
-                              src={item.product.imagen_url}
-                              alt={item.product.nombre}
-                              className="w-12 h-12 rounded object-cover flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-gray-900 text-sm truncate">
-                              {item.product.nombre}
-                            </h4>
-                            <p className="text-xs text-gray-500">{item.product.categoria}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">
+                                {item.product.nombre}
+                              </h4>
+                              <p className="text-xs text-gray-500">{item.product.categoria}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.basket_item_id)}
+                              className="ml-2 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                              title="Eliminar producto"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleRemoveItem(item.basket_item_id);
-                          }}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                          title="Eliminar producto"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleUpdateQuantity(item.basket_item_id, item.cantidad - 1);
-                            }}
-                            className="p-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={item.cantidad <= 1}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-10 text-center font-medium text-sm">
-                            {item.cantidad}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleUpdateQuantity(item.basket_item_id, item.cantidad + 1);
-                            }}
-                            className="p-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={item.cantidad >= maxQuantity}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatCurrency(item.total_item)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatCurrency(item.precio_unitario_snapshot)} c/u
-                          </p>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateQuantity(item.basket_item_id, item.cantidad - 1)}
+                                className="p-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
+                                disabled={item.cantidad <= 1}
+                                title="Quitar unidad"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="w-12 text-center font-bold text-base text-gray-900">
+                                {item.cantidad}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateQuantity(item.basket_item_id, item.cantidad + 1)}
+                                className="p-2 bg-green-100 border border-green-300 rounded-lg text-green-700 hover:bg-green-200 active:bg-green-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-100"
+                                disabled={item.cantidad >= maxQuantity}
+                                title="Agregar unidad"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-base font-bold text-gray-900">
+                                {formatCurrency(item.total_item)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatCurrency(item.precio_unitario_snapshot)} c/u
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
