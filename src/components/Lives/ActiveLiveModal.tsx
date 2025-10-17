@@ -382,7 +382,7 @@ export default function ActiveLiveModal({
         type: 'error',
         read: false,
       });
-      return;
+      throw error;
     }
 
     await loadLiveData();

@@ -38,14 +38,20 @@ export default function ProductSidebar({ products, onAddNewProduct, isOpen, onCl
       return;
     }
 
-    await onAddNewProduct({
-      nombre: newProduct.nombre,
-      precio_unitario: parseFloat(newProduct.precio_unitario),
-      cantidad_en_stock: parseInt(newProduct.cantidad_en_stock),
-    });
+    try {
+      await onAddNewProduct({
+        nombre: newProduct.nombre,
+        precio_unitario: parseFloat(newProduct.precio_unitario),
+        cantidad_en_stock: parseInt(newProduct.cantidad_en_stock),
+      });
 
-    setNewProduct({ nombre: '', precio_unitario: '', cantidad_en_stock: '' });
-    setShowAddModal(false);
+      // Only close modal and reset form if successful
+      setNewProduct({ nombre: '', precio_unitario: '', cantidad_en_stock: '' });
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error in handleAddProduct:', error);
+      // Keep modal open on error
+    }
   };
 
   return (
