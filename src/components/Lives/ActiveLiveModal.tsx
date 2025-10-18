@@ -286,10 +286,26 @@ export default function ActiveLiveModal({
     );
     const item = basket?.items.find((item) => item.basket_item_id === basketItemId);
 
-    if (!item) return;
+    if (!item) {
+      console.error('Item not found:', basketItemId);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se encontró el producto en la canasta',
+        type: 'error',
+        read: false,
+      });
+      return;
+    }
 
     const product = products.find((p) => p.product_id === item.product_id);
     if (!product) {
+      console.error('Product not found:', item.product_id);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se encontró el producto en el inventario',
+        type: 'error',
+        read: false,
+      });
       return;
     }
 
@@ -307,7 +323,7 @@ export default function ActiveLiveModal({
 
     const newTotal = item.precio_unitario_snapshot * newQuantity;
 
-    await supabase
+    const { error } = await supabase
       .from('basket_items')
       .update({
         cantidad: newQuantity,
@@ -315,19 +331,16 @@ export default function ActiveLiveModal({
       })
       .eq('basket_item_id', basketItemId);
 
-    if (basket) {
-      await updateBasketTotals(basket.basket_id);
+    if (error) {
+      console.error('Error updating basket item quantity:', error);
+      onAddNotification({
+        title: 'Error al Actualizar',
+        message: 'No se pudo actualizar la cantidad. Intenta nuevamente.',
+        type: 'error',
+        read: false,
+      });
+      return;
     }
-
-    await loadLiveData();
-  };
-
-  const handleRemoveItem = async (basketItemId: string) => {
-    const basket = baskets.find((b) =>
-      b.items.some((item) => item.basket_item_id === basketItemId)
-    );
-
-    await supabase.from('basket_items').delete().eq('basket_item_id', basketItemId);
 
     if (basket) {
       await updateBasketTotals(basket.basket_id);
@@ -336,8 +349,54 @@ export default function ActiveLiveModal({
     await loadLiveData();
 
     onAddNotification({
+      title: 'Cantidad Actualizada',
+      message: `Cantidad actualizada a ${newQuantity} unidad${newQuantity > 1 ? 'es' : ''}`,
+      type: 'success',
+      read: false,
+    });
+  };
+
+  const handleRemoveItem = async (basketItemId: string) => {
+    const basket = baskets.find((b) =>
+      b.items.some((item) => item.basket_item_id === basketItemId)
+    );
+
+    const item = basket?.items.find((item) => item.basket_item_id === basketItemId);
+    const productName = item?.product?.nombre || 'Producto';
+
+    if (!basket) {
+      console.error('Basket not found for item:', basketItemId);
+      onAddNotification({
+        title: 'Error',
+        message: 'No se encontró la canasta',
+        type: 'error',
+        read: false,
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('basket_items')
+      .delete()
+      .eq('basket_item_id', basketItemId);
+
+    if (error) {
+      console.error('Error deleting basket item:', error);
+      onAddNotification({
+        title: 'Error al Eliminar',
+        message: 'No se pudo eliminar el producto. Intenta nuevamente.',
+        type: 'error',
+        read: false,
+      });
+      return;
+    }
+
+    await updateBasketTotals(basket.basket_id);
+    await loadLiveData();
+
+    onAddNotification({
       title: 'Producto Eliminado',
-      message: 'Producto removido de la canasta',
+      message: `${productName} removido de la canasta`,
       type: 'info',
       read: false,
     });

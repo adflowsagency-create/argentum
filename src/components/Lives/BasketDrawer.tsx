@@ -22,6 +22,7 @@ export default function BasketDrawer({
   onRemoveItem,
 }: BasketDrawerProps) {
   const [productSearch, setProductSearch] = useState('');
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
 
   if (!isOpen || !basket) return null;
 
@@ -50,22 +51,45 @@ export default function BasketDrawer({
       setProductSearch('');
     } catch (error) {
       console.error('Error adding product:', error);
+      alert('Error al agregar el producto. Por favor, intenta nuevamente.');
     }
   };
 
   const handleUpdateQuantity = async (basketItemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      return;
+    }
+
+    setLoadingItems(prev => new Set(prev).add(basketItemId));
+
     try {
       await onUpdateQuantity(basketItemId, newQuantity);
     } catch (error) {
       console.error('Error updating quantity:', error);
+      alert('Error al actualizar la cantidad. Por favor, intenta nuevamente.');
+    } finally {
+      setLoadingItems(prev => {
+        const next = new Set(prev);
+        next.delete(basketItemId);
+        return next;
+      });
     }
   };
 
   const handleRemoveItem = async (basketItemId: string) => {
+    setLoadingItems(prev => new Set(prev).add(basketItemId));
+
     try {
       await onRemoveItem(basketItemId);
     } catch (error) {
       console.error('Error removing item:', error);
+      alert('Error al eliminar el producto. Por favor, intenta nuevamente.');
+    } finally {
+      setLoadingItems(prev => {
+        const next = new Set(prev);
+        next.delete(basketItemId);
+        return next;
+      });
     }
   };
 
@@ -199,6 +223,7 @@ export default function BasketDrawer({
                     productFromInventory?.cantidad_en_stock ??
                     Math.max(item.product.cantidad_en_stock - item.cantidad, 0);
                   const maxQuantity = remainingStock + item.cantidad;
+                  const isItemLoading = loadingItems.has(item.basket_item_id);
 
                   return (
                     <div
@@ -217,8 +242,9 @@ export default function BasketDrawer({
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(item.basket_item_id)}
-                              className="ml-2 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                              className="ml-2 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                               title="Eliminar producto"
+                              disabled={isItemLoading}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -230,7 +256,7 @@ export default function BasketDrawer({
                                 type="button"
                                 onClick={() => handleUpdateQuantity(item.basket_item_id, item.cantidad - 1)}
                                 className="p-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100"
-                                disabled={item.cantidad <= 1}
+                                disabled={item.cantidad <= 1 || isItemLoading}
                                 title="Quitar unidad"
                               >
                                 <Minus className="h-4 w-4" />
@@ -242,7 +268,7 @@ export default function BasketDrawer({
                                 type="button"
                                 onClick={() => handleUpdateQuantity(item.basket_item_id, item.cantidad + 1)}
                                 className="p-2 bg-green-100 border border-green-300 rounded-lg text-green-700 hover:bg-green-200 active:bg-green-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-100"
-                                disabled={item.cantidad >= maxQuantity}
+                                disabled={item.cantidad >= maxQuantity || isItemLoading}
                                 title="Agregar unidad"
                               >
                                 <Plus className="h-4 w-4" />
